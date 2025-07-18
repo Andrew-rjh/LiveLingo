@@ -2,6 +2,7 @@
 
 from typing import Any
 
+import logging
 import openai
 
 
@@ -14,11 +15,14 @@ class LLMClient:
 
     def _call(self, prompt: str) -> str:
         """Internal helper to send a prompt to the LLM."""
+        logging.info("Sending prompt to LLM")
         response = openai.ChatCompletion.create(
             model=self.model,
             messages=[{"role": "user", "content": prompt}],
         )
-        return response["choices"][0]["message"]["content"].strip()
+        text = response["choices"][0]["message"]["content"].strip()
+        logging.info("Received response from LLM")
+        return text
 
     def translate(self, text: str, target_lang: str = "en") -> str:
         """Translate given text to the target language using the LLM."""

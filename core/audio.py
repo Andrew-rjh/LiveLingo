@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-import numpy as np
+import logging
 import sounddevice as sd
 
 
@@ -23,11 +23,19 @@ class AudioSource:
         """Start capturing audio using sounddevice."""
         if self.stream:
             return
+        logging.info("Starting audio capture (system audio=%s)", self.use_system_audio)
+        extra = None
+        if self.use_system_audio:
+            try:
+                extra = sd.WasapiSettings(loopback=True)
+            except AttributeError:
+                logging.warning("System audio capture not supported on this platform")
         self.stream = sd.InputStream(
             samplerate=self.sample_rate,
             channels=self.channels,
             blocksize=self.frames_per_buffer,
             dtype="int16",
+            extra_settings=extra,
         )
         self.stream.start()
 
@@ -36,12 +44,14 @@ class AudioSource:
         if not self.stream:
             return None
         data, _ = self.stream.read(self.frames_per_buffer)
+        logging.debug("Read %d frames", len(data))
         return data.tobytes()
 
     def stop(self):
         """Stop capturing audio."""
         if not self.stream:
             return
+        logging.info("Stopping audio capture")
         self.stream.stop()
         self.stream.close()
         self.stream = None

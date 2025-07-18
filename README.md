@@ -4,7 +4,7 @@ A simple prototype demonstrating real-time translation and conversation topic as
 
 ## Features
 
-- Capture audio from the microphone using ``sounddevice``.
+- Capture system audio using ``sounddevice`` (WASAPI loopback on Windows).
 - Convert speech to text with ``SpeechRecognition`` and the Google API.
 - Send recognized text to an LLM for translation or topic summarization via the OpenAI API.
 - Always-on-top overlay window showing results.
@@ -23,6 +23,13 @@ Install dependencies with:
 
 ```bash
 pip install -r requirements.txt
+```
+
+Set your OpenAI API key in the ``OPENAI_API_KEY`` environment variable before
+running the app:
+
+```bash
+export OPENAI_API_KEY=your_key_here
 ```
 
 ## Running

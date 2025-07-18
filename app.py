@@ -4,6 +4,8 @@ import sys
 import os
 from typing import Optional
 
+import logging
+
 from PyQt5 import QtCore, QtWidgets
 import speech_recognition as sr
 
@@ -27,6 +29,7 @@ class Transcriber(QtCore.QThread):
         self.buffer = b""
 
     def run(self):
+        logging.info("Transcriber thread started")
         self.audio.start()
         while self.running:
             data = self.audio.read()
@@ -38,17 +41,22 @@ class Transcriber(QtCore.QThread):
                 self.buffer = b""
                 try:
                     text = self.recognizer.recognize_google(audio_data)
+                    logging.info("Recognized text: %s", text)
                 except sr.UnknownValueError:
+                    logging.debug("Speech recognition could not understand audio")
                     continue
                 translation = self.llm.translate(text)
+                logging.info("Translation: %s", translation)
                 self.text_ready.emit(translation)
-
+        
     def stop(self):
         self.running = False
         self.audio.stop()
+        logging.info("Transcriber thread stopped")
 
 
 def main():
+    logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(message)s')
     app = QtWidgets.QApplication(sys.argv)
 
     main_window = MainWindow()
@@ -56,7 +64,7 @@ def main():
     overlay.show()
 
     api_key = os.getenv("OPENAI_API_KEY", "")
-    audio_source = AudioSource()
+    audio_source = AudioSource(use_microphone=False, use_system_audio=True)
     llm = LLMClient(api_key)
     transcriber = Transcriber(audio_source, llm)
     transcriber.text_ready.connect(overlay.update_text)
