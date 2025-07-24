@@ -1,74 +1,76 @@
-"""Main application entry point."""
-
 import sys
-import os
-from typing import Optional
-
-from PyQt5 import QtCore, QtWidgets
-import speech_recognition as sr
-
-from core.audio import AudioSource
-from core.llm import LLMClient
+from PySide6.QtWidgets import QApplication
+from PySide6.QtCore import QTimer
 from ui.main_window import MainWindow
-from ui.overlay import Overlay
+from ui.overlay_window import OverlayWindow
+from core.speech_to_text import SpeechToText
+from core.llm_handler import LLMHandler
+import config
 
+class LiveLingoApp:
+    def __init__(self):
+        if not config.OPENAI_API_KEY:
+            raise ValueError("OpenAI API key is not set in config.py")
 
-class Transcriber(QtCore.QThread):
-    """Background thread to transcribe audio and update the overlay."""
+        self.app = QApplication(sys.argv)
+        self.main_window = MainWindow()
+        self.overlay_window = OverlayWindow()
+        self.stt = SpeechToText(api_key=config.OPENAI_API_KEY)
+        self.llm_handler = LLMHandler(api_key=config.OPENAI_API_KEY)
 
-    text_ready = QtCore.pyqtSignal(str)
+        self.transcription_timer = QTimer()
+        self.transcription_timer.timeout.connect(self.process_audio)
 
-    def __init__(self, audio: AudioSource, llm: LLMClient):
-        super().__init__()
-        self.audio = audio
-        self.llm = llm
-        self.recognizer = sr.Recognizer()
-        self.running = True
-        self.buffer = b""
+        self.main_window.capture_button.clicked.connect(self.handle_capture_toggle)
+
+    def handle_capture_toggle(self):
+        if not self.main_window.audio_capturer.is_recording:
+            self.start_processing()
+        else:
+            self.stop_processing()
+
+    def start_processing(self):
+        self.main_window.audio_capturer.callback = self.stt.process_audio_chunk
+        self.transcription_timer.start(5000) # Process every 5 seconds
+        print("Audio processing started.")
+
+    def stop_processing(self):
+        self.transcription_timer.stop()
+        self.process_audio() # Process any remaining audio
+        print("Audio processing stopped.")
+
+    def process_audio(self):
+        original_text = self.stt.transcribe_buffer()
+        if not original_text:
+            return
+
+        print(f"Transcribed: {original_text}")
+        self.overlay_window.label.setText(original_text) # Always show original text
+
+        # LLM processing (translation/summarization) will still happen in the background
+        # but its output will not directly update the overlay anymore.
+        if self.main_window.translate_radio.isChecked():
+            target_lang = self.main_window.lang_combo.currentText()
+            print(f"Translating to {target_lang}...")
+            processed_text = self.llm_handler.translate(original_text, target_lang)
+            if processed_text:
+                print(f"LLM Translation: {processed_text}")
+        elif self.main_window.summarize_radio.isChecked():
+            print("Summarizing topic...")
+            processed_text = self.llm_handler.summarize_topic(original_text)
+            if processed_text:
+                print(f"LLM Summary: {processed_text}")
 
     def run(self):
-        self.audio.start()
-        while self.running:
-            data = self.audio.read()
-            if data:
-                self.buffer += data
-            frame_size = self.audio.sample_rate * self.audio.sample_width * 3
-            if len(self.buffer) >= frame_size:
-                audio_data = sr.AudioData(self.buffer, self.audio.sample_rate, self.audio.sample_width)
-                self.buffer = b""
-                try:
-                    text = self.recognizer.recognize_google(audio_data)
-                except sr.UnknownValueError:
-                    continue
-                translation = self.llm.translate(text)
-                self.text_ready.emit(translation)
-
-    def stop(self):
-        self.running = False
-        self.audio.stop()
-
-
-def main():
-    app = QtWidgets.QApplication(sys.argv)
-
-    main_window = MainWindow()
-    overlay = Overlay()
-    overlay.show()
-
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    audio_source = AudioSource()
-    llm = LLMClient(api_key)
-    transcriber = Transcriber(audio_source, llm)
-    transcriber.text_ready.connect(overlay.update_text)
-    transcriber.start()
-
-    main_window.show()
-
-    exit_code = app.exec_()
-    transcriber.stop()
-    transcriber.wait()
-    sys.exit(exit_code)
-
+        self.main_window.show()
+        self.overlay_window.show()
+        sys.exit(self.app.exec())
 
 if __name__ == "__main__":
-    main()
+    try:
+        livelingo = LiveLingoApp()
+        livelingo.run()
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        # In a real app, you'd show a user-friendly dialog.
+        sys.exit(1)

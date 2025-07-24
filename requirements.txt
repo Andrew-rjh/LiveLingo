@@ -1,5 +1,5 @@
-PyQt5>=5.15
-sounddevice
-numpy
+PySide6
+Pyaudio
 openai
-SpeechRecognition
+numpy
+torch
