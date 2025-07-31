@@ -29,8 +29,8 @@ int main() {
         int ch = _getch();
         if (ch == 'q') break;
         if (ch == 's') {
-            auto sysData = systemCap.buffer().getLastSamples(secondsToSave, sysRate * sysChannels * sysBits / 8);
-            auto micData = micCap.buffer().getLastSamples(secondsToSave, micRate * micChannels * micBits / 8);
+            auto sysData = systemCap.getLastSamples(secondsToSave);
+            auto micData = micCap.getLastSamples(secondsToSave);
             WavWriter::writeWav("system.wav", sysData, sysRate, sysChannels, sysBits, sysFormat);
             WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits, micFormat);
             std::cout << "Saved" << std::endl;
