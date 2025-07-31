@@ -10,7 +10,8 @@ public:
                          const std::vector<char>& data,
                          int sampleRate,
                          short channels,
-                         short bitsPerSample);
+                         short bitsPerSample,
+                         short formatType);
 };
 
 #endif // WAV_WRITER_H

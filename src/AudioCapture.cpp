@@ -5,6 +5,7 @@
 #include <Functiondiscoverykeys_devpkey.h>
 #include <mmdeviceapi.h>
 #include <Audioclient.h>
+#include <mmreg.h>
 #include <comdef.h>
 #pragma comment(lib, "ole32.lib")
 #pragma comment(lib, "winmm.lib")
@@ -39,6 +40,17 @@ bool AudioCapture::start() {
     m_channels = pwfx->nChannels;
     m_bitsPerSample = pwfx->wBitsPerSample;
     m_blockAlign = pwfx->nBlockAlign;
+    m_formatType = pwfx->wFormatTag;
+#ifdef _WIN32
+    if (pwfx->wFormatTag == WAVE_FORMAT_EXTENSIBLE) {
+        WAVEFORMATEXTENSIBLE* ext = reinterpret_cast<WAVEFORMATEXTENSIBLE*>(pwfx);
+        if (ext->SubFormat == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT) {
+            m_formatType = WAVE_FORMAT_IEEE_FLOAT;
+        } else if (ext->SubFormat == KSDATAFORMAT_SUBTYPE_PCM) {
+            m_formatType = WAVE_FORMAT_PCM;
+        }
+    }
+#endif
 
     size_t bytesPerSecond = static_cast<size_t>(m_sampleRate) * m_blockAlign;
     // Prepare a large enough buffer to hold up to 10 hours of audio.

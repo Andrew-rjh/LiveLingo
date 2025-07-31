@@ -24,6 +24,7 @@ public:
     int sampleRate() const { return m_sampleRate; }
     short channels() const { return m_channels; }
     short bitsPerSample() const { return m_bitsPerSample; }
+    short formatType() const { return m_formatType; }
 
 private:
     void captureThread();
@@ -38,6 +39,7 @@ private:
     short m_channels = 0;
     short m_bitsPerSample = 0;
     short m_blockAlign = 0;
+    short m_formatType = 1;
 
 #ifdef _WIN32
     IMMDevice* m_device = nullptr;
