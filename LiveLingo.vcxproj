@@ -135,7 +135,7 @@
     <ClInclude Include="include\SystemCapture.h" />
     <ClInclude Include="include\MicCapture.h" />
     <ClInclude Include="include\MuLaw.h" />
-    <ClInclude Include="include\PythonBridge.h" />
+    <ClInclude Include="include\WhisperBridge.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AudioBuffer.cpp" />
@@ -143,7 +143,7 @@
     <ClCompile Include="src\AudioCapture.cpp" />
     <ClCompile Include="src\MuLaw.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\PythonBridge.cpp" />
+    <ClCompile Include="src\WhisperBridge.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
