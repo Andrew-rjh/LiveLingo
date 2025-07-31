@@ -1,4 +1,5 @@
 #include "AudioCapture.h"
+#include "MuLaw.h"
 #include <chrono>
 
 #ifdef _WIN32
@@ -53,9 +54,17 @@ bool AudioCapture::start() {
 #endif
 
     size_t bytesPerSecond = static_cast<size_t>(m_sampleRate) * m_blockAlign;
-    // Only keep a reasonable history (e.g. last 60 seconds) to avoid huge memory usage.
-    const double bufferSeconds = 60.0; // adjust as needed
-    m_buffer.setCapacity(static_cast<size_t>(bytesPerSecond * bufferSeconds));
+    const double bufferSeconds = 7200.0; // store up to 2 hours
+
+    if (m_bitsPerSample == 16) {
+        m_compress = true;
+        m_bytesPerSecondStored = static_cast<size_t>(m_sampleRate) * m_channels; // 8-bit mu-law
+    } else {
+        m_compress = false;
+        m_bytesPerSecondStored = bytesPerSecond;
+    }
+
+    m_buffer.setCapacity(static_cast<size_t>(m_bytesPerSecondStored * bufferSeconds));
     DWORD streamFlags = m_loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0;
     streamFlags |= AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
     hr = m_audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
@@ -96,6 +105,19 @@ AudioBuffer& AudioCapture::buffer() {
     return m_buffer;
 }
 
+std::vector<char> AudioCapture::getLastSamples(double seconds) {
+    if (!m_compress) {
+        return m_buffer.getLastSamples(seconds, static_cast<int>(m_bytesPerSecondStored));
+    }
+    auto compressed = m_buffer.getLastSamples(seconds, static_cast<int>(m_bytesPerSecondStored));
+    std::vector<char> out(compressed.size() * 2);
+    short* samples = reinterpret_cast<short*>(out.data());
+    for (size_t i = 0; i < compressed.size(); ++i) {
+        samples[i] = muLawToLinear(static_cast<unsigned char>(compressed[i]));
+    }
+    return out;
+}
+
 void AudioCapture::captureThread() {
 #ifdef _WIN32
     HANDLE waitArray[1] = {m_event};
@@ -113,7 +135,17 @@ void AudioCapture::captureThread() {
             if (FAILED(hr)) break;
             if (frames > 0) {
                 size_t bytes = frames * static_cast<size_t>(m_blockAlign);
-                m_buffer.push(data, bytes);
+                if (m_compress) {
+                    const short* samples = reinterpret_cast<const short*>(data);
+                    size_t count = bytes / 2;
+                    std::vector<unsigned char> comp(count);
+                    for (size_t i = 0; i < count; ++i) {
+                        comp[i] = linearToMuLaw(samples[i]);
+                    }
+                    m_buffer.push(comp.data(), comp.size());
+                } else {
+                    m_buffer.push(data, bytes);
+                }
             }
             m_captureClient->ReleaseBuffer(frames);
             hr = m_captureClient->GetNextPacketSize(&packetLength);

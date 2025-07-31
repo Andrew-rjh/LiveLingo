@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <string>
+#include <vector>
 #include "AudioBuffer.h"
 
 #ifdef _WIN32
@@ -20,6 +21,7 @@ public:
     void stop();
 
     AudioBuffer& buffer();
+    std::vector<char> getLastSamples(double seconds);
 
     int sampleRate() const { return m_sampleRate; }
     short channels() const { return m_channels; }
@@ -34,6 +36,9 @@ private:
     std::atomic<bool> m_running{false};
 
     AudioBuffer m_buffer;
+
+    bool m_compress = false;
+    size_t m_bytesPerSecondStored = 0;
 
     int m_sampleRate = 0;
     short m_channels = 0;

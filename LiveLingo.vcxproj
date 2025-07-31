@@ -128,11 +128,13 @@
     <ClInclude Include="include\AudioCapture.h" />
     <ClInclude Include="include\SystemCapture.h" />
     <ClInclude Include="include\MicCapture.h" />
+    <ClInclude Include="include\MuLaw.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\AudioBuffer.cpp" />
     <ClCompile Include="src\WavWriter.cpp" />
     <ClCompile Include="src\AudioCapture.cpp" />
+    <ClCompile Include="src\MuLaw.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
