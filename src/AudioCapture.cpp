@@ -11,7 +11,7 @@
 #endif
 
 AudioCapture::AudioCapture(bool loopback)
-    : m_loopback(loopback), m_buffer(44100 * 2 * 2 * 3600 * 10) { // default 10h buffer
+    : m_loopback(loopback) {
 }
 
 AudioCapture::~AudioCapture() {
@@ -34,18 +34,27 @@ bool AudioCapture::start() {
     WAVEFORMATEX* pwfx = nullptr;
     hr = m_audioClient->GetMixFormat(&pwfx);
     if (FAILED(hr)) return false;
+
+    m_sampleRate = pwfx->nSamplesPerSec;
+    m_channels = pwfx->nChannels;
+    m_bitsPerSample = pwfx->wBitsPerSample;
+    m_blockAlign = pwfx->nBlockAlign;
+
+    size_t bytesPerSecond = static_cast<size_t>(m_sampleRate) * m_blockAlign;
+    m_buffer = AudioBuffer(bytesPerSecond * 3600 * 10); // 10h buffer
     DWORD streamFlags = m_loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0;
     streamFlags |= AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
     hr = m_audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
                                    streamFlags,
                                    0, 0, pwfx, nullptr);
-    if (FAILED(hr)) return false;
+    if (FAILED(hr)) { CoTaskMemFree(pwfx); return false; }
     hr = m_audioClient->GetService(IID_PPV_ARGS(&m_captureClient));
-    if (FAILED(hr)) return false;
+    if (FAILED(hr)) { CoTaskMemFree(pwfx); return false; }
     m_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
     hr = m_audioClient->SetEventHandle(m_event);
-    if (FAILED(hr)) return false;
+    if (FAILED(hr)) { CoTaskMemFree(pwfx); return false; }
     m_audioClient->Start();
+    CoTaskMemFree(pwfx);
     m_running = true;
     m_thread = std::thread(&AudioCapture::captureThread, this);
     return true;
@@ -89,7 +98,7 @@ void AudioCapture::captureThread() {
             hr = m_captureClient->GetBuffer(&data, &frames, &flags, nullptr, nullptr);
             if (FAILED(hr)) break;
             if (frames > 0) {
-                size_t bytes = frames * 4; // assume 16bit stereo
+                size_t bytes = frames * static_cast<size_t>(m_blockAlign);
                 m_buffer.push(data, bytes);
             }
             m_captureClient->ReleaseBuffer(frames);

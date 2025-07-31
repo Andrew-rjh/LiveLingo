@@ -21,6 +21,10 @@ public:
 
     AudioBuffer& buffer();
 
+    int sampleRate() const { return m_sampleRate; }
+    short channels() const { return m_channels; }
+    short bitsPerSample() const { return m_bitsPerSample; }
+
 private:
     void captureThread();
 
@@ -29,6 +33,11 @@ private:
     std::atomic<bool> m_running{false};
 
     AudioBuffer m_buffer;
+
+    int m_sampleRate = 0;
+    short m_channels = 0;
+    short m_bitsPerSample = 0;
+    short m_blockAlign = 0;
 
 #ifdef _WIN32
     IMMDevice* m_device = nullptr;
