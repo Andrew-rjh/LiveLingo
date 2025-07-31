@@ -2,11 +2,17 @@
 #include "MicCapture.h"
 #include "WavWriter.h"
 #include <iostream>
+#include "PythonBridge.h"
+#include <thread>
 #ifdef _WIN32
 #include <conio.h>
 #endif
 
 int main() {
+#ifdef _WIN32
+    std::thread pyThread([](){ PythonBridge::runTranscription(); });
+    pyThread.detach();
+#endif
 #ifdef _WIN32
     SystemCapture systemCap;
     MicCapture micCap;
