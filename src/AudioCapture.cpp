@@ -34,8 +34,10 @@ bool AudioCapture::start() {
     WAVEFORMATEX* pwfx = nullptr;
     hr = m_audioClient->GetMixFormat(&pwfx);
     if (FAILED(hr)) return false;
+    DWORD streamFlags = m_loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0;
+    streamFlags |= AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
     hr = m_audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-                                   m_loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0,
+                                   streamFlags,
                                    0, 0, pwfx, nullptr);
     if (FAILED(hr)) return false;
     hr = m_audioClient->GetService(IID_PPV_ARGS(&m_captureClient));
