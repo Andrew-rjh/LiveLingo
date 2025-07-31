@@ -123,7 +123,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp" />
+    <ClInclude Include="include\AudioBuffer.h" />
+    <ClInclude Include="include\WavWriter.h" />
+    <ClInclude Include="include\AudioCapture.h" />
+    <ClInclude Include="include\SystemCapture.h" />
+    <ClInclude Include="include\MicCapture.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\AudioBuffer.cpp" />
+    <ClCompile Include="src\WavWriter.cpp" />
+    <ClCompile Include="src\AudioCapture.cpp" />
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
