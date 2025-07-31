@@ -2,7 +2,9 @@
 #include "MicCapture.h"
 #include "WavWriter.h"
 #include <iostream>
+#ifdef _WIN32
 #include <conio.h>
+#endif
 
 int main() {
 #ifdef _WIN32
