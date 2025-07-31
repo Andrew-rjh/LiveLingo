@@ -14,17 +14,21 @@ int main() {
     }
     std::cout << "Press 's' to save last N seconds, 'q' to quit" << std::endl;
     const double secondsToSave = 10.0; // change as needed
-    const int sampleRate = 44100;
-    const short channels = 2;
-    const short bits = 16;
+    const int sysRate = systemCap.sampleRate();
+    const short sysChannels = systemCap.channels();
+    const short sysBits = systemCap.bitsPerSample();
+
+    const int micRate = micCap.sampleRate();
+    const short micChannels = micCap.channels();
+    const short micBits = micCap.bitsPerSample();
     while (true) {
         int ch = _getch();
         if (ch == 'q') break;
         if (ch == 's') {
-            auto sysData = systemCap.buffer().getLastSamples(secondsToSave, sampleRate * channels * bits / 8);
-            auto micData = micCap.buffer().getLastSamples(secondsToSave, sampleRate * channels * bits / 8);
-            WavWriter::writeWav("system.wav", sysData, sampleRate, channels, bits);
-            WavWriter::writeWav("mic.wav", micData, sampleRate, channels, bits);
+            auto sysData = systemCap.buffer().getLastSamples(secondsToSave, sysRate * sysChannels * sysBits / 8);
+            auto micData = micCap.buffer().getLastSamples(secondsToSave, micRate * micChannels * micBits / 8);
+            WavWriter::writeWav("system.wav", sysData, sysRate, sysChannels, sysBits);
+            WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits);
             std::cout << "Saved" << std::endl;
         }
     }
