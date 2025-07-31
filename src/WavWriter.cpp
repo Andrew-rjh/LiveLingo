@@ -22,7 +22,8 @@ bool WavWriter::writeWav(const std::string& path,
                          const std::vector<char>& data,
                          int sampleRate,
                          short channels,
-                         short bitsPerSample) {
+                         short bitsPerSample,
+                         short formatType) {
     WavHeader header;
     header.data_size = data.size();
     header.overall_size = header.data_size + sizeof(WavHeader) - 8;
@@ -31,6 +32,7 @@ bool WavWriter::writeWav(const std::string& path,
     header.byterate = sampleRate * channels * bitsPerSample / 8;
     header.block_align = channels * bitsPerSample / 8;
     header.bits_per_sample = bitsPerSample;
+    header.format_type = formatType;
 
     std::ofstream ofs(path, std::ios::binary);
     if (!ofs) return false;
