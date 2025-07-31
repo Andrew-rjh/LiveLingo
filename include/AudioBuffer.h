@@ -2,6 +2,7 @@
 #define AUDIO_BUFFER_H
 
 #include <vector>
+#include <deque>
 #include <mutex>
 
 class AudioBuffer {
@@ -14,8 +15,7 @@ public:
 
 private:
     mutable std::mutex m_mutex;
-    std::vector<char> m_buffer;
-    size_t m_writePos = 0;
+    std::deque<char> m_buffer;
     size_t m_capacity = 0;
 };
 
