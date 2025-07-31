@@ -15,39 +15,39 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\AudioBuffer.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\\AudioBuffer.cpp">
+    <ClCompile Include="src\WavWriter.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\\AudioCapture.cpp">
+    <ClCompile Include="src\AudioCapture.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\\WavWriter.cpp">
+    <ClCompile Include="src\MuLaw.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\\MuLaw.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\\AudioBuffer.h">
+    <ClInclude Include="include\AudioBuffer.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\\AudioCapture.h">
+    <ClInclude Include="include\WavWriter.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\\SystemCapture.h">
+    <ClInclude Include="include\AudioCapture.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\\MicCapture.h">
+    <ClInclude Include="include\SystemCapture.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\\WavWriter.h">
+    <ClInclude Include="include\MicCapture.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\\MuLaw.h">
+    <ClInclude Include="include\MuLaw.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
