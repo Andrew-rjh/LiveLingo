@@ -41,7 +41,8 @@ bool AudioCapture::start() {
     m_blockAlign = pwfx->nBlockAlign;
 
     size_t bytesPerSecond = static_cast<size_t>(m_sampleRate) * m_blockAlign;
-    m_buffer = AudioBuffer(bytesPerSecond * 3600 * 10); // 10h buffer
+    // Prepare a large enough buffer to hold up to 10 hours of audio.
+    m_buffer.setCapacity(bytesPerSecond * 3600 * 10);
     DWORD streamFlags = m_loopback ? AUDCLNT_STREAMFLAGS_LOOPBACK : 0;
     streamFlags |= AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
     hr = m_audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,

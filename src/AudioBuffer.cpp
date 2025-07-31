@@ -4,6 +4,13 @@
 AudioBuffer::AudioBuffer(size_t maxSamples)
     : m_buffer(maxSamples), m_capacity(maxSamples) {}
 
+void AudioBuffer::setCapacity(size_t maxSamples) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_buffer.assign(maxSamples, 0);
+    m_capacity = maxSamples;
+    m_writePos = 0;
+}
+
 void AudioBuffer::push(const void* data, size_t bytes) {
     std::lock_guard<std::mutex> lock(m_mutex);
     const char* ptr = static_cast<const char*>(data);

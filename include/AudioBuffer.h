@@ -7,6 +7,8 @@
 class AudioBuffer {
 public:
     AudioBuffer(size_t maxSamples = 0);
+    // Adjust the internal capacity. This clears existing contents.
+    void setCapacity(size_t maxSamples);
     void push(const void* data, size_t bytes);
     std::vector<char> getLastSamples(double seconds, int bytesPerSecond) const;
 
