@@ -54,7 +54,10 @@ bool AudioCapture::start() {
 #endif
 
     size_t bytesPerSecond = static_cast<size_t>(m_sampleRate) * m_blockAlign;
-    const double bufferSeconds = 7200.0; // store up to 2 hours
+    // Allocate a much smaller buffer to avoid huge memory usage and
+    // potential allocation failures. Five minutes of audio is plenty
+    // for our current use case.
+    const double bufferSeconds = 300.0; // store up to 5 minutes
 
     if (m_bitsPerSample == 16) {
         m_compress = true;
