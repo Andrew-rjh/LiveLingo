@@ -71,10 +71,12 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ExternalIncludePath>C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ExternalIncludePath>C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <ExternalIncludePath>C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -112,6 +114,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>whisper.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -126,6 +129,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>whisper.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
