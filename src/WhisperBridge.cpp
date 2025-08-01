@@ -8,7 +8,7 @@
 
 namespace WhisperBridge {
 
-// Minimal WAV loader for 16-bit PCM mono
+// WAV loader that supports 16-bit PCM and 32-bit float mono
 static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &sampleRate) {
     struct WavHeader {
         char riff[4];
@@ -34,13 +34,29 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
     }
     sampleRate = header.sampleRate;
     size_t numSamples = header.dataSize / (header.bitsPerSample / 8);
-    std::vector<int16_t> pcm16(numSamples);
-    ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
     pcmf32.resize(numSamples);
-    for (size_t i = 0; i < numSamples; ++i) {
-        pcmf32[i] = pcm16[i] / 32768.0f;
+    if (header.bitsPerSample == 16) {
+        std::vector<int16_t> pcm16(numSamples);
+        ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
+        for (size_t i = 0; i < numSamples; ++i) {
+            pcmf32[i] = pcm16[i] / 32768.0f;
+        }
+        return true;
+    } else if (header.bitsPerSample == 32 && header.audioFormat == 3) { // IEEE float
+        ifs.read(reinterpret_cast<char*>(pcmf32.data()), header.dataSize);
+        return true;
+    } else if (header.bitsPerSample == 32 && header.audioFormat == 1) { // 32-bit PCM
+        std::vector<int32_t> pcm32(numSamples);
+        ifs.read(reinterpret_cast<char*>(pcm32.data()), header.dataSize);
+        for (size_t i = 0; i < numSamples; ++i) {
+            pcmf32[i] = pcm32[i] / 2147483648.f;
+        }
+        return true;
+    } else {
+        std::cerr << "Unsupported WAV format: "
+                  << header.audioFormat << " bits:" << header.bitsPerSample << std::endl;
+        return false;
     }
-    return true;
 }
 
 void transcribeFile(const std::string &modelPath, const std::string &wavPath) {
