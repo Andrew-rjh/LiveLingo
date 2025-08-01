@@ -8,37 +8,81 @@
 
 namespace WhisperBridge {
 
-// Minimal WAV loader for 16-bit PCM mono
+// Minimal WAV loader for 16-bit PCM mono. The previous implementation assumed a
+// fixed header layout which failed on files containing additional chunks.  This
+// parser walks the RIFF chunks to robustly locate the "fmt " and "data" blocks.
 static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &sampleRate) {
-    struct WavHeader {
-        char riff[4];
-        uint32_t chunkSize;
-        char wave[4];
-        char fmt[4];
-        uint32_t subchunk1Size;
-        uint16_t audioFormat;
-        uint16_t numChannels;
-        uint32_t sampleRate;
-        uint32_t byteRate;
-        uint16_t blockAlign;
-        uint16_t bitsPerSample;
-        char data[4];
-        uint32_t dataSize;
-    } header;
+    struct ChunkHeader {
+        char id[4];
+        uint32_t size;
+    };
 
     std::ifstream ifs(path, std::ios::binary);
     if (!ifs) return false;
-    ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (std::strncmp(header.riff, "RIFF", 4) != 0 || std::strncmp(header.wave, "WAVE", 4) != 0) {
+
+    char riff[4];
+    uint32_t riffSize = 0;
+    char wave[4];
+    ifs.read(riff, 4);
+    ifs.read(reinterpret_cast<char*>(&riffSize), 4);
+    ifs.read(wave, 4);
+    if (std::strncmp(riff, "RIFF", 4) != 0 || std::strncmp(wave, "WAVE", 4) != 0) {
         return false;
     }
-    sampleRate = header.sampleRate;
-    size_t numSamples = header.dataSize / (header.bitsPerSample / 8);
-    std::vector<int16_t> pcm16(numSamples);
-    ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
-    pcmf32.resize(numSamples);
-    for (size_t i = 0; i < numSamples; ++i) {
-        pcmf32[i] = pcm16[i] / 32768.0f;
+
+    uint16_t numChannels = 0;
+    uint16_t bitsPerSample = 0;
+    uint16_t audioFormat = 0;
+    uint32_t dataSize = 0;
+    std::vector<char> data;
+    bool fmtFound = false;
+
+    while (ifs) {
+        ChunkHeader ch{};
+        if (!ifs.read(reinterpret_cast<char*>(&ch), sizeof(ch))) break;
+
+        if (std::strncmp(ch.id, "fmt ", 4) == 0) {
+            std::vector<char> fmtData(ch.size);
+            if (!ifs.read(fmtData.data(), ch.size)) return false;
+            if (ch.size < 16) return false;
+            audioFormat   = *reinterpret_cast<uint16_t*>(&fmtData[0]);
+            numChannels   = *reinterpret_cast<uint16_t*>(&fmtData[2]);
+            sampleRate    = *reinterpret_cast<uint32_t*>(&fmtData[4]);
+            bitsPerSample = *reinterpret_cast<uint16_t*>(&fmtData[14]);
+            fmtFound = true;
+            // skip any remaining bytes in fmt chunk
+            if (ch.size > 16) {
+                // position is already at end of chunk because we read ch.size bytes
+            }
+        } else if (std::strncmp(ch.id, "data", 4) == 0) {
+            dataSize = ch.size;
+            data.resize(dataSize);
+            if (!ifs.read(data.data(), dataSize)) return false;
+            break; // stop after the data chunk
+        } else {
+            // Skip unknown chunk
+            ifs.seekg(ch.size, std::ios::cur);
+        }
+    }
+
+    if (!fmtFound || dataSize == 0) return false;
+    if (audioFormat != 1 /*PCM*/ || bitsPerSample != 16 || numChannels == 0) {
+        // unsupported format
+        return false;
+    }
+
+    size_t bytesPerSample = bitsPerSample / 8;
+    size_t numFrames = dataSize / (bytesPerSample * numChannels);
+    const int16_t* pcm16 = reinterpret_cast<const int16_t*>(data.data());
+
+    pcmf32.resize(numFrames);
+    for (size_t i = 0; i < numFrames; ++i) {
+        int32_t sum = 0;
+        for (uint16_t ch = 0; ch < numChannels; ++ch) {
+            sum += pcm16[i * numChannels + ch];
+        }
+        float sample = static_cast<float>(sum) / (32768.0f * numChannels);
+        pcmf32[i] = sample;
     }
     return true;
 }
