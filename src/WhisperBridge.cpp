@@ -55,7 +55,8 @@ void transcribeFile(const std::string &modelPath, const std::string &wavPath) {
         return;
     }
 
-    struct whisper_context * ctx = whisper_init_from_file(modelPath.c_str());
+    whisper_context_params cparams = whisper_context_default_params();
+    struct whisper_context * ctx = whisper_init_from_file_with_params(modelPath.c_str(), cparams);
     if (!ctx) {
         std::cerr << "Failed to load model: " << modelPath << std::endl;
         return;
