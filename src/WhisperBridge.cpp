@@ -87,7 +87,9 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
     return true;
 }
 
-void transcribeFile(const std::string &modelPath, const std::string &wavPath) {
+void transcribeFile(const std::string &modelPath,
+                    const std::string &wavPath,
+                    const std::string &language) {
     std::vector<float> pcmf32;
     int sampleRate = 0;
     if (!load_wav(wavPath, pcmf32, sampleRate)) {
@@ -111,7 +113,13 @@ void transcribeFile(const std::string &modelPath, const std::string &wavPath) {
     params.print_progress   = false;
     params.print_realtime   = false;
     params.print_timestamps = false;
-    params.language         = "ko";
+    if (!language.empty()) {
+        params.language = language.c_str();
+        params.detect_language = false;
+    } else {
+        params.language = "";
+        params.detect_language = true;
+    }
     params.n_threads        = std::max(1u, std::thread::hardware_concurrency());
 
     if (whisper_full(ctx, params, pcmf32.data(), pcmf32.size()) != 0) {
