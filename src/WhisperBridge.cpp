@@ -8,8 +8,9 @@
 
 namespace WhisperBridge {
 
-// Simple WAV loader that supports 16-bit PCM with arbitrary channel count.
-// Multi-channel audio is downmixed to mono by averaging the channels.
+// Simple WAV loader that supports 16-bit PCM or 32-bit float with arbitrary channel
+// count.  Multi-channel audio is downmixed to mono by averaging the channels and
+// resampled to WHISPER_SAMPLE_RATE if needed.
 static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &sampleRate) {
     struct WavHeader {
         char riff[4];
@@ -33,8 +34,8 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
     if (std::strncmp(header.riff, "RIFF", 4) != 0 || std::strncmp(header.wave, "WAVE", 4) != 0) {
         return false;
     }
-    // Validate the header - only PCM is supported.
-    if (header.audioFormat != 1 || header.bitsPerSample != 16) {
+    // We support 16-bit PCM and 32-bit float.
+    if (!(header.audioFormat == 1 || header.audioFormat == 3)) {
         return false;
     }
 
@@ -43,16 +44,44 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
     const size_t bytesPerSample = header.bitsPerSample / 8;
     const size_t frameCount = header.dataSize / (bytesPerSample * header.numChannels);
 
-    std::vector<int16_t> pcm16(frameCount * header.numChannels);
-    ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
+    std::vector<float> tmp(frameCount * header.numChannels);
+    if (header.audioFormat == 1 && header.bitsPerSample == 16) {
+        std::vector<int16_t> pcm16(frameCount * header.numChannels);
+        ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
+        for (size_t i = 0; i < pcm16.size(); ++i) {
+            tmp[i] = static_cast<float>(pcm16[i]) / 32768.0f;
+        }
+    } else if (header.bitsPerSample == 32) {
+        ifs.read(reinterpret_cast<char*>(tmp.data()), header.dataSize);
+    } else {
+        return false;
+    }
 
+    // Downmix to mono by averaging channels
     pcmf32.resize(frameCount);
     for (size_t i = 0; i < frameCount; ++i) {
-        int sum = 0;
+        float sum = 0.0f;
         for (int c = 0; c < header.numChannels; ++c) {
-            sum += pcm16[i * header.numChannels + c];
+            sum += tmp[i * header.numChannels + c];
         }
-        pcmf32[i] = static_cast<float>(sum) / (32768.0f * header.numChannels);
+        pcmf32[i] = sum / header.numChannels;
+    }
+
+    // Resample if needed using simple linear interpolation
+    if (sampleRate != WHISPER_SAMPLE_RATE && sampleRate > 0) {
+        const size_t newFrameCount =
+            static_cast<size_t>((static_cast<uint64_t>(frameCount) * WHISPER_SAMPLE_RATE) / sampleRate);
+        std::vector<float> resampled(newFrameCount);
+        for (size_t i = 0; i < newFrameCount; ++i) {
+            float pos = static_cast<float>(i) * sampleRate / WHISPER_SAMPLE_RATE;
+            size_t idx = static_cast<size_t>(pos);
+            float frac = pos - idx;
+            float v1 = idx < frameCount ? pcmf32[idx] : 0.0f;
+            float v2 = (idx + 1 < frameCount) ? pcmf32[idx + 1] : v1;
+            resampled[i] = v1 + (v2 - v1) * frac;
+        }
+        pcmf32.swap(resampled);
+        sampleRate = WHISPER_SAMPLE_RATE;
     }
 
     return true;
