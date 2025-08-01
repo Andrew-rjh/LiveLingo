@@ -6,10 +6,15 @@
 #include <thread>
 #ifdef _WIN32
 #include <conio.h>
+#include <windows.h>
+#include <locale>
 #endif
 
 int main() {
 #ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+    std::setlocale(LC_ALL, ".65001");
     SystemCapture systemCap;
     MicCapture micCap;
     if (!systemCap.start() || !micCap.start()) {
@@ -27,6 +32,7 @@ int main() {
     const short micChannels = micCap.channels();
     const short micBits = micCap.bitsPerSample();
     const short micFormat = micCap.formatType();
+    const std::string language = ""; // empty -> auto-detect, e.g. "en" or "ko"
     while (true) {
         int ch = _getch();
         if (ch == 'q') break;
@@ -36,7 +42,7 @@ int main() {
             WavWriter::writeWav("system.wav", sysData, sysRate, sysChannels, sysBits, sysFormat);
             WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits, micFormat);
             std::cout << "Saved" << std::endl;
-            WhisperBridge::transcribeFile("models/ggml-base.bin", "mic.wav");
+            WhisperBridge::transcribeFile("models/ggml-base.bin", "mic.wav", language);
         }
     }
     systemCap.stop();
