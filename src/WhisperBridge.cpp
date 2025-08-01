@@ -8,7 +8,8 @@
 
 namespace WhisperBridge {
 
-// Minimal WAV loader for 16-bit PCM mono
+// Simple WAV loader that supports 16-bit PCM with arbitrary channel count.
+// Multi-channel audio is downmixed to mono by averaging the channels.
 static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &sampleRate) {
     struct WavHeader {
         char riff[4];
@@ -32,14 +33,28 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
     if (std::strncmp(header.riff, "RIFF", 4) != 0 || std::strncmp(header.wave, "WAVE", 4) != 0) {
         return false;
     }
-    sampleRate = header.sampleRate;
-    size_t numSamples = header.dataSize / (header.bitsPerSample / 8);
-    std::vector<int16_t> pcm16(numSamples);
-    ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
-    pcmf32.resize(numSamples);
-    for (size_t i = 0; i < numSamples; ++i) {
-        pcmf32[i] = pcm16[i] / 32768.0f;
+    // Validate the header - only PCM is supported.
+    if (header.audioFormat != 1 || header.bitsPerSample != 16) {
+        return false;
     }
+
+    sampleRate = header.sampleRate;
+
+    const size_t bytesPerSample = header.bitsPerSample / 8;
+    const size_t frameCount = header.dataSize / (bytesPerSample * header.numChannels);
+
+    std::vector<int16_t> pcm16(frameCount * header.numChannels);
+    ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
+
+    pcmf32.resize(frameCount);
+    for (size_t i = 0; i < frameCount; ++i) {
+        int sum = 0;
+        for (int c = 0; c < header.numChannels; ++c) {
+            sum += pcm16[i * header.numChannels + c];
+        }
+        pcmf32[i] = static_cast<float>(sum) / (32768.0f * header.numChannels);
+    }
+
     return true;
 }
 
