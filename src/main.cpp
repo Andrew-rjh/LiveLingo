@@ -2,17 +2,13 @@
 #include "MicCapture.h"
 #include "WavWriter.h"
 #include <iostream>
-#include "PythonBridge.h"
+#include "WhisperBridge.h"
 #include <thread>
 #ifdef _WIN32
 #include <conio.h>
 #endif
 
 int main() {
-#ifdef _WIN32
-    std::thread pyThread([](){ PythonBridge::runTranscription(); });
-    pyThread.detach();
-#endif
 #ifdef _WIN32
     SystemCapture systemCap;
     MicCapture micCap;
@@ -40,6 +36,7 @@ int main() {
             WavWriter::writeWav("system.wav", sysData, sysRate, sysChannels, sysBits, sysFormat);
             WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits, micFormat);
             std::cout << "Saved" << std::endl;
+            WhisperBridge::transcribeFile("models/ggml-base.bin", "mic.wav");
         }
     }
     systemCap.stop();

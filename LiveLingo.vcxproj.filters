@@ -30,7 +30,7 @@
     <ClCompile Include="src\main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="src\PythonBridge.cpp">
+    <ClCompile Include="src\WhisperBridge.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
   </ItemGroup>
@@ -53,7 +53,7 @@
     <ClInclude Include="include\MuLaw.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="include\PythonBridge.h">
+    <ClInclude Include="include\WhisperBridge.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
   </ItemGroup>
