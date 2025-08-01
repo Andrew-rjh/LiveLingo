@@ -38,8 +38,7 @@ class AudioStream:
         self.stream.close()
 
 
-def transcribe_loop(queues):
-    model = whisper.load_model(MODEL_SIZE)
+def transcribe_loop(model, queues):
     buffer = np.empty((0, 1), dtype=np.float32)
     chunk_samples = int(CHUNK_DURATION * SAMPLE_RATE)
     while True:
@@ -63,6 +62,7 @@ def transcribe_loop(queues):
 
 def run():
     try:
+        model = whisper.load_model(MODEL_SIZE)
         devices = sd.query_devices()
         default_input = sd.default.device[0]
         default_output = sd.default.device[1]
@@ -71,7 +71,7 @@ def run():
         mic_stream.start()
         sys_stream.start()
 
-        t = threading.Thread(target=transcribe_loop, args=([mic_stream.q, sys_stream.q],))
+        t = threading.Thread(target=transcribe_loop, args=(model, [mic_stream.q, sys_stream.q]))
         t.daemon = True
         t.start()
         print("Recording... Press Ctrl+C to stop.")
