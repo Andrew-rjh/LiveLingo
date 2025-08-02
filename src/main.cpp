@@ -1,3 +1,13 @@
+#pragma comment(lib, "whisper.lib")
+#pragma comment(lib, "ggml.lib")
+#pragma comment(lib, "ggml-base.lib")
+#pragma comment(lib, "ggml-cpu.lib")
+#pragma comment(lib, "ggml-cuda.lib")
+#pragma comment(lib, "cuda.lib")
+#pragma comment(lib, "CompilerIdCUDA.lib")
+#pragma comment(lib, "cudart.lib") 
+#pragma comment(lib, "cublas.lib") 
+
 #include "SystemCapture.h"
 #include "MicCapture.h"
 #include "WavWriter.h"
