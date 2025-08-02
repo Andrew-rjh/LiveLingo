@@ -32,7 +32,7 @@ int main() {
     const short micChannels = micCap.channels();
     const short micBits = micCap.bitsPerSample();
     const short micFormat = micCap.formatType();
-    const std::string language = ""; // empty -> auto-detect, e.g. "en" or "ko"
+    const std::string language = "ko"; // empty -> auto-detect, e.g. "en" or "ko"
     while (true) {
         int ch = _getch();
         if (ch == 'q') break;
