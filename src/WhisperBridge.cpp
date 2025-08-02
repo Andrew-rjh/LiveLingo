@@ -1,74 +1,50 @@
 #include "WhisperBridge.h"
 #include "whisper.h"
-#include <fstream>
-#include <iostream>
-#include <vector>
 #include <cstring>
+#include <iostream>
 #include <thread>
 
 namespace WhisperBridge {
 
-// Simple WAV loader that supports 16-bit PCM or 32-bit float with arbitrary channel
-// count.  Multi-channel audio is downmixed to mono by averaging the channels and
-// resampled to WHISPER_SAMPLE_RATE if needed.
-static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &sampleRate) {
-    struct WavHeader {
-        char riff[4];
-        uint32_t chunkSize;
-        char wave[4];
-        char fmt[4];
-        uint32_t subchunk1Size;
-        uint16_t audioFormat;
-        uint16_t numChannels;
-        uint32_t sampleRate;
-        uint32_t byteRate;
-        uint16_t blockAlign;
-        uint16_t bitsPerSample;
-        char data[4];
-        uint32_t dataSize;
-    } header;
+static struct whisper_context* g_ctx = nullptr;
 
-    std::ifstream ifs(path, std::ios::binary);
-    if (!ifs) return false;
-    ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (std::strncmp(header.riff, "RIFF", 4) != 0 || std::strncmp(header.wave, "WAVE", 4) != 0) {
-        return false;
-    }
-    // We support 16-bit PCM and 32-bit float.
-    if (!(header.audioFormat == 1 || header.audioFormat == 3)) {
+// Convert raw PCM samples to mono float32 PCM at WHISPER_SAMPLE_RATE
+static bool convertAudio(const std::vector<char> &audioData,
+                         int sampleRate,
+                         int numChannels,
+                         int bitsPerSample,
+                         std::vector<float> &out) {
+    if (audioData.empty() || sampleRate <= 0 || numChannels <= 0) {
         return false;
     }
 
-    sampleRate = header.sampleRate;
+    size_t frameCount = audioData.size() / ((bitsPerSample / 8) * numChannels);
+    std::vector<float> tmp(frameCount * numChannels);
 
-    const size_t bytesPerSample = header.bitsPerSample / 8;
-    const size_t frameCount = header.dataSize / (bytesPerSample * header.numChannels);
-
-    std::vector<float> tmp(frameCount * header.numChannels);
-    if (header.audioFormat == 1 && header.bitsPerSample == 16) {
-        std::vector<int16_t> pcm16(frameCount * header.numChannels);
-        ifs.read(reinterpret_cast<char*>(pcm16.data()), header.dataSize);
-        for (size_t i = 0; i < pcm16.size(); ++i) {
+    if (bitsPerSample == 16) {
+        const int16_t *pcm16 = reinterpret_cast<const int16_t*>(audioData.data());
+        for (size_t i = 0; i < frameCount * numChannels; ++i) {
             tmp[i] = static_cast<float>(pcm16[i]) / 32768.0f;
         }
-    } else if (header.bitsPerSample == 32) {
-        ifs.read(reinterpret_cast<char*>(tmp.data()), header.dataSize);
+    } else if (bitsPerSample == 32) {
+        const float *pcm32 = reinterpret_cast<const float*>(audioData.data());
+        std::memcpy(tmp.data(), pcm32, frameCount * numChannels * sizeof(float));
     } else {
-        return false;
+        return false; // unsupported format
     }
 
-    // Downmix to mono by averaging channels
-    pcmf32.resize(frameCount);
+    // Downmix to mono
+    out.resize(frameCount);
     for (size_t i = 0; i < frameCount; ++i) {
         float sum = 0.0f;
-        for (int c = 0; c < header.numChannels; ++c) {
-            sum += tmp[i * header.numChannels + c];
+        for (int c = 0; c < numChannels; ++c) {
+            sum += tmp[i * numChannels + c];
         }
-        pcmf32[i] = sum / header.numChannels;
+        out[i] = sum / numChannels;
     }
 
     // Resample if needed using simple linear interpolation
-    if (sampleRate != WHISPER_SAMPLE_RATE && sampleRate > 0) {
+    if (sampleRate != WHISPER_SAMPLE_RATE) {
         const size_t newFrameCount =
             static_cast<size_t>((static_cast<uint64_t>(frameCount) * WHISPER_SAMPLE_RATE) / sampleRate);
         std::vector<float> resampled(newFrameCount);
@@ -76,39 +52,43 @@ static bool load_wav(const std::string &path, std::vector<float> &pcmf32, int &s
             float pos = static_cast<float>(i) * sampleRate / WHISPER_SAMPLE_RATE;
             size_t idx = static_cast<size_t>(pos);
             float frac = pos - idx;
-            float v1 = idx < frameCount ? pcmf32[idx] : 0.0f;
-            float v2 = (idx + 1 < frameCount) ? pcmf32[idx + 1] : v1;
+            float v1 = idx < frameCount ? out[idx] : 0.0f;
+            float v2 = (idx + 1 < frameCount) ? out[idx + 1] : v1;
             resampled[i] = v1 + (v2 - v1) * frac;
         }
-        pcmf32.swap(resampled);
-        sampleRate = WHISPER_SAMPLE_RATE;
+        out.swap(resampled);
     }
 
     return true;
 }
 
-void transcribeFile(const std::string &modelPath,
-                    const std::string &wavPath,
-                    const std::string &language) {
-    std::vector<float> pcmf32;
-    int sampleRate = 0;
-    if (!load_wav(wavPath, pcmf32, sampleRate)) {
-        std::cerr << "Failed to load WAV file: " << wavPath << std::endl;
-        return;
+bool init(const std::string &modelPath) {
+    if (g_ctx) {
+        return true; // already initialized
     }
-    if (sampleRate != WHISPER_SAMPLE_RATE) {
-        std::cerr << "Unsupported sample rate" << std::endl;
-        return;
-    }
-
     whisper_context_params cparams = whisper_context_default_params();
     cparams.use_gpu = true;
-
-    struct whisper_context* ctx = whisper_init_from_file_with_params(modelPath.c_str(), cparams);
-
-    if (!ctx) {
+    g_ctx = whisper_init_from_file_with_params(modelPath.c_str(), cparams);
+    if (!g_ctx) {
         std::cerr << "Failed to load model: " << modelPath << std::endl;
-        return;
+        return false;
+    }
+    return true;
+}
+
+std::string transcribeBuffer(const std::vector<char> &audioData,
+                             int sampleRate,
+                             int numChannels,
+                             int bitsPerSample,
+                             const std::string &language) {
+    if (!g_ctx) {
+        return ""; // model not initialized
+    }
+
+    std::vector<float> pcmf32;
+    if (!convertAudio(audioData, sampleRate, numChannels, bitsPerSample, pcmf32)) {
+        std::cerr << "Unsupported audio format" << std::endl;
+        return "";
     }
 
     whisper_full_params params = whisper_full_default_params(WHISPER_SAMPLING_GREEDY);
@@ -124,19 +104,26 @@ void transcribeFile(const std::string &modelPath,
     }
     params.n_threads        = std::max(1u, std::thread::hardware_concurrency());
 
-    if (whisper_full(ctx, params, pcmf32.data(), pcmf32.size()) != 0) {
+    if (whisper_full(g_ctx, params, pcmf32.data(), pcmf32.size()) != 0) {
         std::cerr << "whisper_full() failed" << std::endl;
-        whisper_free(ctx);
-        return;
+        return "";
     }
 
-    int n = whisper_full_n_segments(ctx);
+    std::string result;
+    int n = whisper_full_n_segments(g_ctx);
     for (int i = 0; i < n; ++i) {
-        const char * text = whisper_full_get_segment_text(ctx, i);
-        std::cout << text << std::endl;
+        const char *text = whisper_full_get_segment_text(g_ctx, i);
+        result += text;
     }
+    return result;
+}
 
-    whisper_free(ctx);
+void cleanup() {
+    if (g_ctx) {
+        whisper_free(g_ctx);
+        g_ctx = nullptr;
+    }
 }
 
 } // namespace WhisperBridge
+
