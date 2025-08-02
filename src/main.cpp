@@ -53,7 +53,7 @@ int main() {
             WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits, micFormat);
             std::cout << "Saved" << std::endl;
             //WhisperBridge::transcribeFile("models/ggml-base.bin", "mic.wav", language);//
-            WhisperBridge::transcribeFile("models/ggml-medium.bin", "mic.wav", language);//ggml-medium
+            WhisperBridge::transcribeFile("models/ggml-medium.bin", "system.wav", language);//ggml-medium
         }
     }
     systemCap.stop();
