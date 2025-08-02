@@ -10,10 +10,10 @@
 
 #include "SystemCapture.h"
 #include "MicCapture.h"
-#include "WavWriter.h"
 #include <iostream>
 #include "WhisperBridge.h"
 #include <thread>
+#include <chrono>
 #ifdef _WIN32
 #include <conio.h>
 #include <windows.h>
@@ -31,29 +31,27 @@ int main() {
         std::cerr << "Failed to start audio capture" << std::endl;
         return 1;
     }
-    std::cout << "Press 's' to save last N seconds, 'q' to quit" << std::endl;
-    const double secondsToSave = 10.0; // change as needed
-    const int sysRate = systemCap.sampleRate();
-    const short sysChannels = systemCap.channels();
-    const short sysBits = systemCap.bitsPerSample();
-    const short sysFormat = systemCap.formatType();
 
-    const int micRate = micCap.sampleRate();
-    const short micChannels = micCap.channels();
-    const short micBits = micCap.bitsPerSample();
-    const short micFormat = micCap.formatType();
     const std::string language = "ko"; // empty -> auto-detect, e.g. "en" or "ko"
+    WhisperBridge::WhisperStream streamer("models/ggml-medium.bin", language);
+    if (_kbhit()) _getch(); // clear any buffered input
+    std::cout << "Streaming transcription. Press 'q' to quit." << std::endl;
+
+    const double chunkSeconds = 5.0; // transcribe every 5 seconds
     while (true) {
-        int ch = _getch();
-        if (ch == 'q') break;
-        if (ch == 's') {
-            auto sysData = systemCap.getLastSamples(secondsToSave);
-            auto micData = micCap.getLastSamples(secondsToSave);
-            WavWriter::writeWav("system.wav", sysData, sysRate, sysChannels, sysBits, sysFormat);
-            WavWriter::writeWav("mic.wav", micData, micRate, micChannels, micBits, micFormat);
-            std::cout << "Saved" << std::endl;
-            //WhisperBridge::transcribeFile("models/ggml-base.bin", "mic.wav", language);//
-            WhisperBridge::transcribeFile("models/ggml-medium.bin", "mic.wav", language);//ggml-medium
+        if (_kbhit()) {
+            int ch = _getch();
+            if (ch == 'q') break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(chunkSeconds * 1000)));
+        auto micData = micCap.getLastSamples(chunkSeconds);
+        std::string text = streamer.transcribe(micData,
+                                               micCap.sampleRate(),
+                                               micCap.channels(),
+                                               micCap.bitsPerSample(),
+                                               micCap.formatType());
+        if (!text.empty()) {
+            std::cout << text << std::endl;
         }
     }
     systemCap.stop();
