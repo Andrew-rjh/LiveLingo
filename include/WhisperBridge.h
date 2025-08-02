@@ -11,8 +11,8 @@ namespace WhisperBridge {
 
     // Transcribe raw PCM audio samples. The audio data should contain
     // interleaved samples in little-endian format. Supported bit depths
-    // are 16-bit integer and 32-bit float. The buffer is down-mixed to
-    // mono and resampled to the model's expected sample rate internally.
+    // are 16-bit/24-bit integers and 32-bit float. The buffer is down-mixed
+    // to mono and resampled to the model's expected sample rate internally.
     std::string transcribeBuffer(const std::vector<char> &audioData,
                                  int sampleRate,
                                  int numChannels,

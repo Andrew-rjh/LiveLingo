@@ -26,6 +26,13 @@ static bool convertAudio(const std::vector<char> &audioData,
         for (size_t i = 0; i < frameCount * numChannels; ++i) {
             tmp[i] = static_cast<float>(pcm16[i]) / 32768.0f;
         }
+    } else if (bitsPerSample == 24) {
+        const unsigned char *pcm24 = reinterpret_cast<const unsigned char*>(audioData.data());
+        for (size_t i = 0; i < frameCount * numChannels; ++i) {
+            int32_t sample = pcm24[i * 3] | (pcm24[i * 3 + 1] << 8) | (pcm24[i * 3 + 2] << 16);
+            if (sample & 0x800000) sample |= ~0xFFFFFF; // sign extend
+            tmp[i] = static_cast<float>(sample) / 8388608.0f;
+        }
     } else if (bitsPerSample == 32) {
         const float *pcm32 = reinterpret_cast<const float*>(audioData.data());
         std::memcpy(tmp.data(), pcm32, frameCount * numChannels * sizeof(float));
@@ -81,8 +88,8 @@ std::string transcribeBuffer(const std::vector<char> &audioData,
                              int numChannels,
                              int bitsPerSample,
                              const std::string &language) {
-    if (!g_ctx) {
-        return ""; // model not initialized
+    if (!g_ctx || audioData.empty()) {
+        return ""; // model not initialized or no data
     }
 
     std::vector<float> pcmf32;
