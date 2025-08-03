@@ -322,6 +322,7 @@ int main(int argc, char ** argv) {
         std::vector<float> pcmf32    (n_samples_30s, 0.0f);
         std::vector<float> pcmf32_old;
         std::vector<float> pcmf32_new_local;
+        std::string pending_text;
         int n_iter = 0;
         while (is_running.load()) {
             /*if (!audio_queue.pop(pcmf32_new_local)) {
@@ -336,6 +337,10 @@ int main(int argc, char ** argv) {
             }
             // 비어있는 버퍼가 들어오면 현재까지의 텍스트를 종료하고 컨텍스트를 초기화
             if (pcmf32_new_local.empty()) {
+                if (!pending_text.empty()) {
+                    timestamped_print("%s\n", pending_text.c_str());
+                    pending_text.clear();
+                }
                 printf("\n");
                 pcmf32_old.clear();
                 if (!params.no_context) {
@@ -394,20 +399,17 @@ int main(int argc, char ** argv) {
                 printf("\33[2K\r");
             }
             const int n_segments = whisper_full_n_segments(ctx);
+            std::string assembled;
             for (int i = 0; i < n_segments; ++i) {
                 const char * text = whisper_full_get_segment_text(ctx, i);
-
-                if (params.no_timestamps) {
-                    timestamped_print("%s", text);
-                } else {
+                if (!params.no_timestamps) {
                     const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
                     const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
-
-                    std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
-
-                    timestamped_print("%s", output.c_str());
+                    assembled += "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  ";
                 }
+                assembled += text;
             }
+            pending_text = assembled;
 
             ++n_iter;
             if ((n_iter % n_new_line) == 0) {
