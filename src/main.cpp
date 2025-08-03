@@ -82,7 +82,7 @@ private:
 
 // command-line parameters
 struct whisper_params {
-    int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
+    int32_t n_threads = std::thread::hardware_concurrency();//std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t step_ms = 500;//500;
     int32_t length_ms  = 5000;
     int32_t keep_ms    = 650;
