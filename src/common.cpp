@@ -9,6 +9,29 @@
 #include <locale>
 #include <regex>
 #include <sstream>
+#include <chrono>
+#include <cstdarg>
+#include <cstdio>
+
+void timestamped_print(const char *fmt, ...) {
+    using namespace std::chrono;
+    auto now = system_clock::now();
+    std::time_t t = system_clock::to_time_t(now);
+    std::tm tm_info;
+#ifdef _WIN32
+    localtime_s(&tm_info, &t);
+#else
+    localtime_r(&t, &tm_info);
+#endif
+    char buf[20];
+    std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm_info);
+    std::fprintf(stdout, "[%s] ", buf);
+    va_list args;
+    va_start(args, fmt);
+    std::vfprintf(stdout, fmt, args);
+    va_end(args);
+    std::fflush(stdout);
+}
 
 // Function to check if the next argument exists
 static std::string get_next_arg(int& i, int argc, char** argv, const std::string& flag, gpt_params& params) {
