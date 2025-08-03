@@ -1,4 +1,5 @@
 #include "common-sdl.h"
+#include "miniaudio.h"
 
 #include <cstdio>
 
@@ -9,12 +10,61 @@ audio_async::audio_async(int len_ms) {
 }
 
 audio_async::~audio_async() {
-    if (m_dev_id_in) {
+    if (m_use_loopback) {
+        if (m_device) {
+            ma_device_uninit(m_device);
+            delete m_device;
+            m_device = nullptr;
+        }
+        if (m_ctx) {
+            ma_context_uninit(m_ctx);
+            delete m_ctx;
+            m_ctx = nullptr;
+        }
+    } else if (m_dev_id_in) {
         SDL_CloseAudioDevice(m_dev_id_in);
     }
 }
 
-bool audio_async::init(int capture_id, int sample_rate) {
+bool audio_async::init(int capture_id, int sample_rate, bool system_audio) {
+    if (system_audio) {
+        m_use_loopback = true;
+
+        m_ctx = new ma_context;
+        if (ma_context_init(nullptr, 0, nullptr, m_ctx) != MA_SUCCESS) {
+            fprintf(stderr, "%s: failed to initialize miniaudio context\n", __func__);
+            delete m_ctx;
+            m_ctx = nullptr;
+            return false;
+        }
+
+        ma_device_config config = ma_device_config_init(ma_device_type_loopback);
+        config.capture.format   = ma_format_f32;
+        config.capture.channels = 1;
+        config.sampleRate       = sample_rate;
+        config.dataCallback     = [](ma_device * dev, void * /*out*/, const void * input, ma_uint32 frameCount) {
+            audio_async * audio = (audio_async *) dev->pUserData;
+            audio->callback((uint8_t *) input, frameCount * sizeof(float));
+        };
+        config.pUserData = this;
+
+        m_device = new ma_device;
+        if (ma_device_init(m_ctx, &config, m_device) != MA_SUCCESS) {
+            fprintf(stderr, "%s: failed to initialize loopback device\n", __func__);
+            delete m_device;
+            m_device = nullptr;
+            ma_context_uninit(m_ctx);
+            delete m_ctx;
+            m_ctx = nullptr;
+            return false;
+        }
+
+        m_sample_rate = sample_rate;
+        m_audio.resize((m_sample_rate*m_len_ms)/1000);
+
+        return true;
+    }
+
     SDL_LogSetPriority(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO);
 
     if (SDL_Init(SDL_INIT_AUDIO) < 0) {
@@ -79,6 +129,23 @@ bool audio_async::init(int capture_id, int sample_rate) {
 }
 
 bool audio_async::resume() {
+    if (m_use_loopback) {
+        if (!m_device) {
+            fprintf(stderr, "%s: no audio device to resume!\n", __func__);
+            return false;
+        }
+        if (m_running) {
+            fprintf(stderr, "%s: already running!\n", __func__);
+            return false;
+        }
+        if (ma_device_start(m_device) != MA_SUCCESS) {
+            fprintf(stderr, "%s: failed to start loopback device\n", __func__);
+            return false;
+        }
+        m_running = true;
+        return true;
+    }
+
     if (!m_dev_id_in) {
         fprintf(stderr, "%s: no audio device to resume!\n", __func__);
         return false;
@@ -97,6 +164,20 @@ bool audio_async::resume() {
 }
 
 bool audio_async::pause() {
+    if (m_use_loopback) {
+        if (!m_device) {
+            fprintf(stderr, "%s: no audio device to pause!\n", __func__);
+            return false;
+        }
+        if (!m_running) {
+            fprintf(stderr, "%s: already paused!\n", __func__);
+            return false;
+        }
+        ma_device_stop(m_device);
+        m_running = false;
+        return true;
+    }
+
     if (!m_dev_id_in) {
         fprintf(stderr, "%s: no audio device to pause!\n", __func__);
         return false;
@@ -115,9 +196,16 @@ bool audio_async::pause() {
 }
 
 bool audio_async::clear() {
-    if (!m_dev_id_in) {
-        fprintf(stderr, "%s: no audio device to clear!\n", __func__);
-        return false;
+    if (m_use_loopback) {
+        if (!m_device) {
+            fprintf(stderr, "%s: no audio device to clear!\n", __func__);
+            return false;
+        }
+    } else {
+        if (!m_dev_id_in) {
+            fprintf(stderr, "%s: no audio device to clear!\n", __func__);
+            return false;
+        }
     }
 
     if (!m_running) {
@@ -168,9 +256,16 @@ void audio_async::callback(uint8_t * stream, int len) {
 }
 
 void audio_async::get(int ms, std::vector<float> & result) {
-    if (!m_dev_id_in) {
-        fprintf(stderr, "%s: no audio device to get audio from!\n", __func__);
-        return;
+    if (m_use_loopback) {
+        if (!m_device) {
+            fprintf(stderr, "%s: no audio device to get audio from!\n", __func__);
+            return;
+        }
+    } else {
+        if (!m_dev_id_in) {
+            fprintf(stderr, "%s: no audio device to get audio from!\n", __func__);
+            return;
+        }
     }
 
     if (!m_running) {
