@@ -31,6 +31,7 @@
 #include "common-whisper.h"
 #include "whisper.h"
 #include "ggml-backend.h"
+#include "vad.h"
 
 #include <chrono>
 #include <cstdio>
@@ -459,6 +460,11 @@ int main(int argc, char ** argv) {
 
         if (!is_running.load()) {
             break;
+        }
+
+        // Skip sending audio to the model if no speech is detected
+        if (!vad_detect_speech(pcmf32_new, WHISPER_SAMPLE_RATE)) {
+            continue;
         }
 
         while (!audio_queue.push(std::move(pcmf32_new)) && is_running.load()) {
