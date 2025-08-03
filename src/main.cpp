@@ -365,8 +365,7 @@ int main(int argc, char ** argv) {
                 const char * text = whisper_full_get_segment_text(ctx, i);
 
                 if (params.no_timestamps) {
-                    printf("%s", text);
-                    fflush(stdout);
+                    timestamped_print("%s", text);
 
                     if (params.fname_out.length() > 0) {
                         fout << text;
@@ -377,8 +376,7 @@ int main(int argc, char ** argv) {
 
                     std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
 
-                    printf("%s", output.c_str());
-                    fflush(stdout);
+                    timestamped_print("%s", output.c_str());
 
                     if (params.fname_out.length() > 0) {
                         fout << output;
@@ -409,8 +407,7 @@ int main(int argc, char ** argv) {
         }
     });
 
-    printf("[Start speaking]\n");
-    fflush(stdout);
+    timestamped_print("[Start speaking]\n");
 
     // main audio loop
     while (is_running.load()) {

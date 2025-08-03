@@ -11,6 +11,8 @@
 #include <fstream>
 #include <sstream>
 
+void timestamped_print(const char *fmt, ...);
+
 //
 // GPT CLI argument parsing
 //
