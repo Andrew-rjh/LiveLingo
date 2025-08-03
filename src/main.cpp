@@ -44,9 +44,9 @@
 // command-line parameters
 struct whisper_params {
     int32_t n_threads  = std::min(4, (int32_t) std::thread::hardware_concurrency());
-    int32_t step_ms    = 500;
-    int32_t length_ms  = 10000;
-    int32_t keep_ms    = 500;
+    int32_t step_ms = 500;//500;
+    int32_t length_ms  = 5000;
+    int32_t keep_ms    = 200;
     int32_t capture_id = -1;
     int32_t max_tokens = 32;
     int32_t audio_ctx  = 0;
@@ -63,10 +63,14 @@ struct whisper_params {
     bool tinydiarize   = false;
     bool save_audio    = false; // save audio to wav file
     bool use_gpu       = true;
-    bool flash_attn    = false;
+    bool flash_attn    = true;
 
     std::string language  = "ko";
-    std::string model = "models/ggml-small.bin";//"models/ggml-base.bin";
+
+    //std::string model = "models/ggml-tiny.bin";
+    std::string model = "models/ggml-small.bin";
+    //std::string model = "models/ggml-base.bin";
+    //std::string model = "models/ggml-medium.bin";
     std::string fname_out;
 };
 
