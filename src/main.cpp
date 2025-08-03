@@ -40,6 +40,7 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <cctype>
 
 // command-line parameters
 struct whisper_params {
@@ -144,6 +145,22 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "  -ng,      --no-gpu        [%-7s] disable GPU inference\n",                          params.use_gpu ? "false" : "true");
     fprintf(stderr, "  -fa,      --flash-attn    [%-7s] flash attention during inference\n",               params.flash_attn ? "true" : "false");
     fprintf(stderr, "\n");
+}
+
+static bool is_sentence_end(const std::string & text) {
+    std::string s = text;
+    while (!s.empty() && std::isspace(static_cast<unsigned char>(s.back()))) {
+        s.pop_back();
+    }
+    if (s.empty()) return false;
+
+    size_t idx = s.size();
+    while (idx > 0 && (static_cast<unsigned char>(s[idx-1]) & 0xC0) == 0x80) {
+        --idx;
+    }
+    std::string last = s.substr(idx);
+
+    return last == "." || last == "?" || last == "!" || last == "다" || last == "요";
 }
 
 int main(int argc, char ** argv) {
@@ -402,6 +419,7 @@ int main(int argc, char ** argv) {
                 }
 
                 const int n_segments = whisper_full_n_segments(ctx);
+                bool force_nl = false;
                 for (int i = 0; i < n_segments; ++i) {
                     const char * text = whisper_full_get_segment_text(ctx, i);
 
@@ -431,6 +449,10 @@ int main(int argc, char ** argv) {
                             fout << output;
                         }
                     }
+
+                    if (is_sentence_end(text)) {
+                        force_nl = true;
+                    }
                 }
 
                 if (params.fname_out.length() > 0) {
@@ -441,29 +463,39 @@ int main(int argc, char ** argv) {
                     printf("\n");
                     printf("### Transcription %d END\n", n_iter);
                 }
-            }
 
-            ++n_iter;
+                ++n_iter;
 
-            if (!use_vad && (n_iter % n_new_line) == 0) {
-                printf("\n");
+                if (!use_vad && (force_nl || (n_iter % n_new_line) == 0)) {
+                    printf("\n");
 
-                // keep part of the audio for next iteration to try to mitigate word boundary issues
-                pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
+                    if (force_nl) {
+                        pcmf32_old.clear();
+                        audio->clear();
+                        if (!params.no_context) {
+                            prompt_tokens.clear();
+                        }
+                        n_iter = 0;
+                    } else {
+                        // keep part of the audio for next iteration to try to mitigate word boundary issues
+                        pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
 
-                // Add tokens of the last full length segment as the prompt
-                if (!params.no_context) {
-                    prompt_tokens.clear();
+                        // Add tokens of the last full length segment as the prompt
+                        if (!params.no_context) {
+                            prompt_tokens.clear();
 
-                    const int n_segments = whisper_full_n_segments(ctx);
-                    for (int i = 0; i < n_segments; ++i) {
-                        const int token_count = whisper_full_n_tokens(ctx, i);
-                        for (int j = 0; j < token_count; ++j) {
-                            prompt_tokens.push_back(whisper_full_get_token_id(ctx, i, j));
+                            const int n_segments = whisper_full_n_segments(ctx);
+                            for (int i = 0; i < n_segments; ++i) {
+                                const int token_count = whisper_full_n_tokens(ctx, i);
+                                for (int j = 0; j < token_count; ++j) {
+                                    prompt_tokens.push_back(whisper_full_get_token_id(ctx, i, j));
+                                }
+                            }
                         }
                     }
                 }
             }
+
             fflush(stdout);
         }
     }
