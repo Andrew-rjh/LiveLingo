@@ -328,7 +328,20 @@ int main(int argc, char ** argv) {
             if (!audio_queue.pop(pcmf32_new_local)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
-                
+
+            }
+            // 비어있는 버퍼가 들어오면 현재까지의 텍스트를 종료하고 컨텍스트를 초기화
+            if (pcmf32_new_local.empty()) {
+                printf("\n");
+                if (params.fname_out.length() > 0) {
+                    fout << std::endl;
+                }
+                pcmf32_old.clear();
+                if (!params.no_context) {
+                    prompt_tokens.clear();
+                }
+                n_iter = 0;
+                continue;
             }
             // 큐에 남은 모든 청크를 한데 모아서 pcmf32_new_local에 합치기
             std::vector<float> backlog;
@@ -428,6 +441,10 @@ int main(int argc, char ** argv) {
 
     timestamped_print("[Start speaking]\n");
 
+    auto last_voice_time = std::chrono::steady_clock::now();
+    bool sent_silence = false;
+    const int silence_timeout_ms = 2000;
+
     // main audio loop
     while (is_running.load()) {
         // handle Ctrl + C
@@ -463,9 +480,22 @@ int main(int argc, char ** argv) {
         }
 
         // Skip sending audio to the model if no speech is detected
-        if (!vad_detect_speech(pcmf32_new, WHISPER_SAMPLE_RATE)) {
+        bool is_speech = vad_detect_speech(pcmf32_new, WHISPER_SAMPLE_RATE);
+        if (!is_speech) {
+            auto now = std::chrono::steady_clock::now();
+            if (!sent_silence &&
+                std::chrono::duration_cast<std::chrono::milliseconds>(now - last_voice_time).count() > silence_timeout_ms) {
+                while (!audio_queue.push(std::vector<float>()) && is_running.load()) {
+                    std::vector<float> drop;
+                    audio_queue.pop(drop);
+                }
+                sent_silence = true;
+            }
             continue;
         }
+
+        last_voice_time = std::chrono::steady_clock::now();
+        sent_silence = false;
 
         while (!audio_queue.push(std::move(pcmf32_new)) && is_running.load()) {
             std::vector<float> drop;
