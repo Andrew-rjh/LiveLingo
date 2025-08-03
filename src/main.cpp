@@ -15,9 +15,14 @@
 #pragma comment(lib, "ggml-base.lib")
 #pragma comment(lib, "ggml-cuda.lib")
 
-#pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ��
-#pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ��
-#pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ��
+#ifdef _WIN32
+#define NOMINMAX        // <-- 반드시 windows.h보다 먼저 선언
+#include <windows.h>
+#endif
+
+#pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ¡¦
+#pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ¡¦
+#pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ¡¦
 
 
 #include "common-sdl.h"
@@ -135,6 +140,11 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
 }
 
 int main(int argc, char ** argv) {
+    std::setlocale(LC_ALL, ".65001");
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     ggml_backend_load_all();
 
     whisper_params params;
