@@ -31,6 +31,7 @@
 #include "common-whisper.h"
 #include "whisper.h"
 #include "ggml-backend.h"
+#include "vad.h"
 
 #include <chrono>
 #include <cstdio>
@@ -85,7 +86,7 @@ struct whisper_params {
     int32_t n_threads = std::thread::hardware_concurrency();//std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t step_ms = 500;//500;
     int32_t length_ms  = 5000;
-    int32_t keep_ms    = 650;
+    int32_t keep_ms    = 200;
     int32_t capture_id = -1;
     int32_t max_tokens = 32;
     int32_t audio_ctx  = 0;
@@ -111,8 +112,8 @@ struct whisper_params {
     //std::string model = "models/ggml-base.bin";
     //std::string model = "models/ggml-medium.bin";
     //std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
-    //std::string model = "models/ggml-large-v3-turbo.bin";
-    std::string model = "models/ggml-large-v3-turbo-q8_0.bin";
+    std::string model = "models/ggml-large-v3-turbo.bin";
+    //std::string model = "models/ggml-large-v3-turbo-q8_0.bin";
     std::string fname_out;
 };
 
@@ -459,6 +460,11 @@ int main(int argc, char ** argv) {
 
         if (!is_running.load()) {
             break;
+        }
+
+        // Skip sending audio to the model if no speech is detected
+        if (!vad_detect_speech(pcmf32_new, WHISPER_SAMPLE_RATE)) {
+            continue;
         }
 
         while (!audio_queue.push(std::move(pcmf32_new)) && is_running.load()) {
