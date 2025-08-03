@@ -75,8 +75,8 @@
     <LibraryPath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ExternalIncludePath>C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
-    <LibraryPath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>C:\SDL2\include;C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\SDL2\lib\x64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -133,21 +133,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="include\AudioBuffer.h" />
-    <ClInclude Include="include\WavWriter.h" />
-    <ClInclude Include="include\AudioCapture.h" />
-    <ClInclude Include="include\SystemCapture.h" />
-    <ClInclude Include="include\MicCapture.h" />
-    <ClInclude Include="include\MuLaw.h" />
-    <ClInclude Include="include\WhisperBridge.h" />
+    <ClInclude Include="include\common-sdl.h" />
+    <ClInclude Include="include\common-whisper.h" />
+    <ClInclude Include="include\common.h" />
+    <ClInclude Include="include\ggml-alloc.h" />
+    <ClInclude Include="include\ggml-backend.h" />
+    <ClInclude Include="include\ggml-cpu.h" />
+    <ClInclude Include="include\ggml.h" />
+    <ClInclude Include="include\whisper.h" />
+    <ClInclude Include="src\miniaudio.h" />
+    <None Include="src\stb_vorbis.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\AudioBuffer.cpp" />
-    <ClCompile Include="src\WavWriter.cpp" />
-    <ClCompile Include="src\AudioCapture.cpp" />
-    <ClCompile Include="src\MuLaw.cpp" />
+    <ClCompile Include="src\common-sdl.cpp" />
+    <ClCompile Include="src\common-whisper.cpp" />
+    <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\WhisperBridge.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
