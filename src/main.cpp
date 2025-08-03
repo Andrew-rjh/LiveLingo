@@ -15,9 +15,9 @@
 #pragma comment(lib, "ggml-base.lib")
 #pragma comment(lib, "ggml-cuda.lib")
 
-#pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ¡¦
-#pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ¡¦
-#pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ¡¦
+#pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError
+#pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString
+#pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2
 
 
 #include "common-sdl.h"
@@ -32,6 +32,9 @@
 #include <string>
 #include <thread>
 #include <vector>
+#ifdef _WIN32
+#include <windows.h>
+#endif
 
 // command-line parameters
 struct whisper_params {
@@ -135,6 +138,10 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
 }
 
 int main(int argc, char ** argv) {
+#ifdef _WIN32
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
+#endif
     ggml_backend_load_all();
 
     whisper_params params;
