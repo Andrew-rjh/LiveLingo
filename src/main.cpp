@@ -2,6 +2,24 @@
 //
 // A very quick-n-dirty implementation serving mainly as a proof of concept.
 //
+
+#define _CRT_SECURE_NO_WARNINGS
+
+#pragma comment(lib, "SDL2.lib")
+#pragma comment(lib, "SDL2main.lib")
+#pragma comment(lib, "whisper.lib")   // build\lib\Release\whisper.lib
+
+#pragma comment(lib, "ggml.lib")      // build\lib\Release\ggml.lib
+#pragma comment(lib, "CompilerIdCUDA.lib")
+#pragma comment(lib, "ggml-cpu.lib")
+#pragma comment(lib, "ggml-base.lib")
+#pragma comment(lib, "ggml-cuda.lib")
+
+#pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ¡¦
+#pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ¡¦
+#pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ¡¦
+
+
 #include "common-sdl.h"
 #include "common.h"
 #include "common-whisper.h"
@@ -39,8 +57,8 @@ struct whisper_params {
     bool use_gpu       = true;
     bool flash_attn    = false;
 
-    std::string language  = "en";
-    std::string model     = "models/ggml-base.en.bin";
+    std::string language  = "ko";
+    std::string model     = "models/ggml-base.bin";
     std::string fname_out;
 };
 
