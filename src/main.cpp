@@ -305,8 +305,8 @@ int main(int argc, char ** argv) {
         }
     }
 
-    set_log_files(&log_file, fout.is_open() ? &fout : nullptr);
-
+    set_log_files(nullptr, fout.is_open() ? &fout : nullptr);
+    
     wav_writer wavWriter;
     if (params.save_audio) {
         time_t now = time(0);
@@ -319,9 +319,10 @@ int main(int argc, char ** argv) {
 
     RingBuffer<std::vector<float>> audio_queue(8);
     std::thread inference_thread([&]() {
-        std::vector<float> pcmf32    (n_samples_30s, 0.0f);
+        std::vector<float> pcmf32(n_samples_30s, 0.0f);
         std::vector<float> pcmf32_old;
         std::vector<float> pcmf32_new_local;
+        std::string sentence;
         int n_iter = 0;
         while (is_running.load()) {
             /*if (!audio_queue.pop(pcmf32_new_local)) {
@@ -407,11 +408,20 @@ int main(int argc, char ** argv) {
 
                     timestamped_print("%s", output.c_str());
                 }
+                sentence = text;
+                //sentence += " ";
             }
 
             ++n_iter;
             if ((n_iter % n_new_line) == 0) {
                 printf("\n");
+                if (log_file.is_open()) {
+                    time_t nowt = time(nullptr);
+                    char buf[32];
+                    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&nowt));
+                    log_file << "[" << buf << "] " << sentence << std::endl;
+                }
+                sentence.clear();
                 pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
                 if (!params.no_context) {
                     prompt_tokens.clear();
