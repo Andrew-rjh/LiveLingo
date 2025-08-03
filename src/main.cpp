@@ -15,8 +15,8 @@
 #pragma comment(lib, "ggml-base.lib")
 #pragma comment(lib, "ggml-cuda.lib")
 
-#include <clocale>
 #ifdef _WIN32
+#define NOMINMAX        // <-- 반드시 windows.h보다 먼저 선언
 #include <windows.h>
 #endif
 
@@ -140,7 +140,7 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
 }
 
 int main(int argc, char ** argv) {
-    std::setlocale(LC_ALL, "");
+    std::setlocale(LC_ALL, ".65001");
 #ifdef _WIN32
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
