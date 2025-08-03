@@ -305,6 +305,8 @@ int main(int argc, char ** argv) {
         }
     }
 
+    set_log_files(&log_file, fout.is_open() ? &fout : nullptr);
+
     wav_writer wavWriter;
     if (params.save_audio) {
         time_t now = time(0);
@@ -321,7 +323,6 @@ int main(int argc, char ** argv) {
         std::vector<float> pcmf32_old;
         std::vector<float> pcmf32_new_local;
         int n_iter = 0;
-        std::string current_transcription;
         while (is_running.load()) {
             /*if (!audio_queue.pop(pcmf32_new_local)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -336,18 +337,6 @@ int main(int argc, char ** argv) {
             // 비어있는 버퍼가 들어오면 현재까지의 텍스트를 종료하고 컨텍스트를 초기화
             if (pcmf32_new_local.empty()) {
                 printf("\n");
-                if (!current_transcription.empty()) {
-                    std::time_t now = std::time(nullptr);
-                    char timebuf[32];
-                    std::strftime(timebuf, sizeof(timebuf), "[%Y-%m-%d %H:%M:%S] ", std::localtime(&now));
-                    log_file << timebuf << current_transcription << std::endl;
-                    log_file.flush();
-                    if (params.fname_out.length() > 0) {
-                        fout << timebuf << current_transcription << std::endl;
-                        fout.flush();
-                    }
-                    current_transcription.clear();
-                }
                 pcmf32_old.clear();
                 if (!params.no_context) {
                     prompt_tokens.clear();
@@ -405,7 +394,6 @@ int main(int argc, char ** argv) {
                 printf("\33[2K\r");
             }
             const int n_segments = whisper_full_n_segments(ctx);
-            std::string new_transcription;
             for (int i = 0; i < n_segments; ++i) {
                 const char * text = whisper_full_get_segment_text(ctx, i);
 
@@ -419,10 +407,7 @@ int main(int argc, char ** argv) {
 
                     timestamped_print("%s", output.c_str());
                 }
-                new_transcription += text;
             }
-
-            current_transcription = new_transcription;
 
             ++n_iter;
             if ((n_iter % n_new_line) == 0) {
