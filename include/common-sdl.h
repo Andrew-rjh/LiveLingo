@@ -8,6 +8,10 @@
 #include <vector>
 #include <mutex>
 
+// Forward declarations for miniaudio structures used for loopback capture
+typedef struct ma_context ma_context;
+typedef struct ma_device  ma_device;
+
 //
 // SDL Audio capture
 //
@@ -17,7 +21,7 @@ public:
     audio_async(int len_ms);
     ~audio_async();
 
-    bool init(int capture_id, int sample_rate);
+    bool init(int capture_id, int sample_rate, bool system_audio = false);
 
     // start capturing audio via the provided SDL callback
     // keep last len_ms seconds of audio in a circular buffer
@@ -33,6 +37,9 @@ public:
 
 private:
     SDL_AudioDeviceID m_dev_id_in = 0;
+    ma_context *      m_ctx       = nullptr;
+    ma_device  *      m_device    = nullptr;
+    bool              m_use_loopback = false;
 
     int m_len_ms = 0;
     int m_sample_rate = 0;

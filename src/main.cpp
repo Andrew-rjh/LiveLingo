@@ -1,4 +1,4 @@
-// Real-time speech recognition of input from a microphone
+// Real-time speech recognition of system audio (loopback)
 //
 // A very quick-n-dirty implementation serving mainly as a proof of concept.
 //
@@ -61,6 +61,7 @@ struct whisper_params {
     bool save_audio    = false; // save audio to wav file
     bool use_gpu       = true;
     bool flash_attn    = false;
+    bool system_audio  = true;  // capture system audio instead of microphone by default
 
     std::string language  = "ko";
     std::string model     = "models/ggml-base.bin";
@@ -98,6 +99,7 @@ static bool whisper_params_parse(int argc, char ** argv, whisper_params & params
         else if (arg == "-sa"   || arg == "--save-audio")    { params.save_audio    = true; }
         else if (arg == "-ng"   || arg == "--no-gpu")        { params.use_gpu       = false; }
         else if (arg == "-fa"   || arg == "--flash-attn")    { params.flash_attn    = true; }
+        else if (arg == "--mic")                               { params.system_audio  = false; }
 
         else {
             fprintf(stderr, "error: unknown argument: %s\n", arg.c_str());
@@ -120,6 +122,7 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "            --length N      [%-7d] audio length in milliseconds\n",                   params.length_ms);
     fprintf(stderr, "            --keep N        [%-7d] audio to keep from previous step in ms\n",         params.keep_ms);
     fprintf(stderr, "  -c ID,    --capture ID    [%-7d] capture device ID\n",                              params.capture_id);
+    fprintf(stderr, "            --mic           [%-7s] use microphone input instead of system audio\n", params.system_audio ? "false" : "true");
     fprintf(stderr, "  -mt N,    --max-tokens N  [%-7d] maximum number of tokens per audio chunk\n",       params.max_tokens);
     fprintf(stderr, "  -ac N,    --audio-ctx N   [%-7d] audio context size (0 - all)\n",                   params.audio_ctx);
     fprintf(stderr, "  -bs N,    --beam-size N   [%-7d] beam size for beam search\n",                      params.beam_size);
@@ -172,7 +175,7 @@ int main(int argc, char ** argv) {
     // init audio
 
     audio_async audio(params.length_ms);
-    if (!audio.init(params.capture_id, WHISPER_SAMPLE_RATE)) {
+    if (!audio.init(params.capture_id, WHISPER_SAMPLE_RATE, params.system_audio)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }
