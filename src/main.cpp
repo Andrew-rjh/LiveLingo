@@ -38,6 +38,7 @@
 #include <memory>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <thread>
 #include <vector>
 #include <atomic>
@@ -324,13 +325,19 @@ int main(int argc, char ** argv) {
                 wavWriter.write(pcmf32_new_local.data(), pcmf32_new_local.size());
             }
             const int n_samples_new = pcmf32_new_local.size();
-            const int n_samples_take = std::min((int) pcmf32_old.size(), std::max(0, n_samples_keep + n_samples_len - n_samples_new));
-            pcmf32.resize(n_samples_new + n_samples_take);
-            for (int i = 0; i < n_samples_take; i++) {
-                pcmf32[i] = pcmf32_old[pcmf32_old.size() - n_samples_take + i];
+            const int n_samples_overlap = std::min((int) pcmf32_old.size(), n_samples_keep);
+            pcmf32.resize(n_samples_new + n_samples_overlap);
+            if (n_samples_overlap > 0) {
+                memcpy(pcmf32.data(),
+                       pcmf32_old.data() + pcmf32_old.size() - n_samples_overlap,
+                       n_samples_overlap * sizeof(float));
             }
-            memcpy(pcmf32.data() + n_samples_take, pcmf32_new_local.data(), n_samples_new*sizeof(float));
-            pcmf32_old = pcmf32;
+            memcpy(pcmf32.data() + n_samples_overlap,
+                   pcmf32_new_local.data(),
+                   n_samples_new * sizeof(float));
+            pcmf32_old = std::vector<float>(
+                pcmf32.end() - std::min((int) pcmf32.size(), n_samples_keep),
+                pcmf32.end());
 
             whisper_full_params wparams = whisper_full_default_params(params.beam_size > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
             wparams.print_progress   = false;
