@@ -138,6 +138,8 @@
     <ClInclude Include="include\common-sdl.h" />
     <ClInclude Include="include\common-whisper.h" />
     <ClInclude Include="include\common.h" />
+    <ClInclude Include="include\audio-capture.h" />
+    <ClInclude Include="include\system-audio.h" />
     <ClInclude Include="include\ggml-alloc.h" />
     <ClInclude Include="include\ggml-backend.h" />
     <ClInclude Include="include\ggml-cpu.h" />
@@ -150,6 +152,7 @@
     <ClCompile Include="src\common-sdl.cpp" />
     <ClCompile Include="src\common-whisper.cpp" />
     <ClCompile Include="src\common.cpp" />
+    <ClCompile Include="src\system-audio.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

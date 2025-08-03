@@ -20,6 +20,9 @@
     <ClCompile Include="src\common.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="src\system-audio.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
     <ClCompile Include="src\main.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
@@ -32,6 +35,12 @@
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="include\common.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\audio-capture.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="include\system-audio.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="include\ggml-alloc.h">
