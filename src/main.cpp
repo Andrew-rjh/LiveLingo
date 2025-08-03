@@ -293,10 +293,11 @@ int main(int argc, char ** argv) {
     int n_iter = 0;
 
     std::atomic<bool> is_running(true);
+    std::ofstream log_file("transcription.log", std::ios::app);
 
     std::ofstream fout;
     if (params.fname_out.length() > 0) {
-        fout.open(params.fname_out);
+        fout.open(params.fname_out, std::ios::app);
         if (!fout.is_open()) {
             fprintf(stderr, "%s: failed to open output file '%s'!\n", __func__, params.fname_out.c_str());
             return 1;
@@ -335,7 +336,10 @@ int main(int argc, char ** argv) {
                 printf("\n");
                 if (params.fname_out.length() > 0) {
                     fout << std::endl;
+                    fout.flush();
                 }
+                log_file << std::endl;
+                log_file.flush();
                 pcmf32_old.clear();
                 if (!params.no_context) {
                     prompt_tokens.clear();
@@ -398,9 +402,11 @@ int main(int argc, char ** argv) {
 
                 if (params.no_timestamps) {
                     timestamped_print("%s", text);
-
+                    log_file << text;
+                    log_file.flush();
                     if (params.fname_out.length() > 0) {
                         fout << text;
+                        fout.flush();
                     }
                 } else {
                     const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
@@ -409,16 +415,21 @@ int main(int argc, char ** argv) {
                     std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
 
                     timestamped_print("%s", output.c_str());
-
+                    log_file << output;
+                    log_file.flush();
                     if (params.fname_out.length() > 0) {
                         fout << output;
+                        fout.flush();
                     }
                 }
             }
 
             if (params.fname_out.length() > 0) {
                 fout << std::endl;
+                fout.flush();
             }
+            log_file << std::endl;
+            log_file.flush();
 
             ++n_iter;
             if ((n_iter % n_new_line) == 0) {
