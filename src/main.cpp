@@ -107,9 +107,12 @@ struct whisper_params {
     std::string language  = "ko";
 
     //std::string model = "models/ggml-tiny.bin";
-    std::string model = "models/ggml-small.bin";
+    //std::string model = "models/ggml-small.bin";
     //std::string model = "models/ggml-base.bin";
     //std::string model = "models/ggml-medium.bin";
+    //std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
+    //std::string model = "models/ggml-large-v3-turbo.bin";
+    std::string model = "models/ggml-large-v3-turbo-q8_0.bin";
     std::string fname_out;
 };
 
@@ -316,9 +319,24 @@ int main(int argc, char ** argv) {
         std::vector<float> pcmf32_new_local;
         int n_iter = 0;
         while (is_running.load()) {
+            /*if (!audio_queue.pop(pcmf32_new_local)) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                continue;
+            }*/
+                        // 최소 한 청크는 받아오기
             if (!audio_queue.pop(pcmf32_new_local)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
+                
+            }
+            // 큐에 남은 모든 청크를 한데 모아서 pcmf32_new_local에 합치기
+            std::vector<float> backlog;
+            while (audio_queue.pop(backlog)) {
+                pcmf32_new_local.insert(
+                    pcmf32_new_local.end(),
+                    backlog.begin(), backlog.end()
+                     );
+                
             }
             if (params.save_audio) {
                 wavWriter.write(pcmf32_new_local.data(), pcmf32_new_local.size());
@@ -420,10 +438,15 @@ int main(int argc, char ** argv) {
         while (is_running.load()) {
             audio->get(params.step_ms, pcmf32_new);
 
-            if ((int) pcmf32_new.size() > 2*n_samples_step) {
+            /*if ((int)pcmf32_new.size() > 2 * n_samples_step) {
                 fprintf(stderr, "\n\n%s: WARNING: cannot process audio fast enough, dropping audio ...\n\n", __func__);
                 audio->clear();
                 continue;
+            }*/
+            if ((int)pcmf32_new.size() > 2 * n_samples_step) {
+                fprintf(stderr,
+                    "\n\n%s: WARNING: capture backlog size = %zu samples (not dropping)\n\n",
+                    __func__, pcmf32_new.size());// 더 이상 드롭하지 않고, backlog 처리에 맡김
             }
 
             if ((int) pcmf32_new.size() >= n_samples_step) {
