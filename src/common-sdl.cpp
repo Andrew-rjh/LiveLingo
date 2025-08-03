@@ -24,12 +24,10 @@ bool audio_async::init(int capture_id, int sample_rate) {
 
     SDL_SetHintWithPriority(SDL_HINT_AUDIO_RESAMPLING_MODE, "medium", SDL_HINT_OVERRIDE);
 
-    {
-        int nDevices = SDL_GetNumAudioDevices(SDL_TRUE);
-        fprintf(stderr, "%s: found %d capture devices:\n", __func__, nDevices);
-        for (int i = 0; i < nDevices; i++) {
-            fprintf(stderr, "%s:    - Capture device #%d: '%s'\n", __func__, i, SDL_GetAudioDeviceName(i, SDL_TRUE));
-        }
+    int nDevices = SDL_GetNumAudioDevices(SDL_TRUE);
+    fprintf(stderr, "%s: found %d capture devices:\n", __func__, nDevices);
+    for (int i = 0; i < nDevices; i++) {
+        fprintf(stderr, "%s:    - Capture device #%d: '%s'\n", __func__, i, SDL_GetAudioDeviceName(i, SDL_TRUE));
     }
 
     SDL_AudioSpec capture_spec_requested;
@@ -49,8 +47,19 @@ bool audio_async::init(int capture_id, int sample_rate) {
     capture_spec_requested.userdata = this;
 
     if (capture_id >= 0) {
-        fprintf(stderr, "%s: attempt to open capture device %d : '%s' ...\n", __func__, capture_id, SDL_GetAudioDeviceName(capture_id, SDL_TRUE));
-        m_dev_id_in = SDL_OpenAudioDevice(SDL_GetAudioDeviceName(capture_id, SDL_TRUE), SDL_TRUE, &capture_spec_requested, &capture_spec_obtained, 0);
+        if (capture_id >= nDevices) {
+            fprintf(stderr, "%s: invalid capture device %d (available devices: %d)\n", __func__, capture_id, nDevices);
+            return false;
+        }
+
+        const char * device_name = SDL_GetAudioDeviceName(capture_id, SDL_TRUE);
+        if (device_name == nullptr) {
+            fprintf(stderr, "%s: failed to get name for capture device %d\n", __func__, capture_id);
+            return false;
+        }
+
+        fprintf(stderr, "%s: attempt to open capture device %d : '%s' ...\n", __func__, capture_id, device_name);
+        m_dev_id_in = SDL_OpenAudioDevice(device_name, SDL_TRUE, &capture_spec_requested, &capture_spec_obtained, 0);
     } else {
         fprintf(stderr, "%s: attempt to open default capture device ...\n", __func__);
         m_dev_id_in = SDL_OpenAudioDevice(nullptr, SDL_TRUE, &capture_spec_requested, &capture_spec_obtained, 0);
