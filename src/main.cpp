@@ -146,6 +146,16 @@ void whisper_print_usage(int /*argc*/, char ** argv, const whisper_params & para
     fprintf(stderr, "\n");
 }
 
+static const char * probability_to_color(float p) {
+    if (p >= 0.75f) {
+        return "\x1b[32m"; // green
+    }
+    if (p >= 0.50f) {
+        return "\x1b[33m"; // yellow
+    }
+    return "\x1b[31m";     // red
+}
+
 int main(int argc, char ** argv) {
     std::setlocale(LC_ALL, ".65001");
 #ifdef _WIN32
@@ -403,12 +413,18 @@ int main(int argc, char ** argv) {
 
                 const int n_segments = whisper_full_n_segments(ctx);
                 for (int i = 0; i < n_segments; ++i) {
-                    const char * text = whisper_full_get_segment_text(ctx, i);
-
                     if (params.no_timestamps) {
-                        printf("%s", text);
+                        const int token_count = whisper_full_n_tokens(ctx, i);
+                        std::string text;
+                        for (int j = 0; j < token_count; ++j) {
+                            whisper_token_data data = whisper_full_get_token_data(ctx, i, j);
+                            const char * token = whisper_token_to_str(ctx, data.id);
+                            printf("%s%s\x1b[0m", probability_to_color(data.p), token);
+                            if (params.fname_out.length() > 0) {
+                                text += token;
+                            }
+                        }
                         fflush(stdout);
-
                         if (params.fname_out.length() > 0) {
                             fout << text;
                         }
@@ -416,19 +432,27 @@ int main(int argc, char ** argv) {
                         const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
                         const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
 
-                        std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
+                        printf("[%s --> %s]  ", to_timestamp(t0, false).c_str(), to_timestamp(t1, false).c_str());
 
-                        if (whisper_full_get_segment_speaker_turn_next(ctx, i)) {
-                            output += " [SPEAKER_TURN]";
+                        const int token_count = whisper_full_n_tokens(ctx, i);
+                        std::string text;
+                        for (int j = 0; j < token_count; ++j) {
+                            whisper_token_data data = whisper_full_get_token_data(ctx, i, j);
+                            const char * token = whisper_token_to_str(ctx, data.id);
+                            printf("%s%s\x1b[0m", probability_to_color(data.p), token);
+                            text += token;
                         }
 
-                        output += "\n";
+                        if (whisper_full_get_segment_speaker_turn_next(ctx, i)) {
+                            printf(" [SPEAKER_TURN]");
+                            text += " [SPEAKER_TURN]";
+                        }
 
-                        printf("%s", output.c_str());
+                        printf("\n");
                         fflush(stdout);
 
                         if (params.fname_out.length() > 0) {
-                            fout << output;
+                            fout << "[" << to_timestamp(t0, false) << " --> " << to_timestamp(t1, false) << "]  " << text << "\n";
                         }
                     }
                 }
