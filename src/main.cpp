@@ -86,8 +86,8 @@ private:
 struct whisper_params {
     int32_t n_threads = std::thread::hardware_concurrency();//std::min(4, (int32_t) std::thread::hardware_concurrency());
     int32_t step_ms = 500;//500;
-    int32_t length_ms  = 5000;
-    int32_t keep_ms    = 200;
+    int32_t length_ms  = 6000;
+    int32_t keep_ms    = 1000;
     int32_t capture_id = -1;
     int32_t max_tokens = 32;
     int32_t audio_ctx  = 0;
@@ -112,8 +112,8 @@ struct whisper_params {
     //std::string model = "models/ggml-small.bin";
     //std::string model = "models/ggml-base.bin";
     //std::string model = "models/ggml-medium.bin";
-    //std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
-    std::string model = "models/ggml-large-v3-turbo.bin";
+    std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
+    //std::string model = "models/ggml-large-v3-turbo.bin";
     //std::string model = "models/ggml-large-v3-turbo-q8_0.bin";
     std::string fname_out;
 };
