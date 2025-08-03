@@ -387,40 +387,23 @@ int main(int argc, char ** argv) {
                 break;
             }
 
-            if (!use_vad) {
-                printf("\33[2K\r");
-                printf("%s", std::string(100, ' ').c_str());
-                printf("\33[2K\r");
-            }
             const int n_segments = whisper_full_n_segments(ctx);
+            std::string line;
             for (int i = 0; i < n_segments; ++i) {
-                const char * text = whisper_full_get_segment_text(ctx, i);
+                line += whisper_full_get_segment_text(ctx, i);
+            }
 
-                if (params.no_timestamps) {
-                    timestamped_print("%s", text);
+            printf("\33[2K\r%s", line.c_str());
+            fflush(stdout);
 
-                    if (params.fname_out.length() > 0) {
-                        fout << text;
-                    }
-                } else {
-                    const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
-                    const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
-
-                    std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
-
-                    timestamped_print("%s", output.c_str());
-
-                    if (params.fname_out.length() > 0) {
-                        fout << output;
-                    }
+            ++n_iter;
+            if (params.fname_out.length() > 0) {
+                fout << line;
+                if ((n_iter % n_new_line) == 0) {
+                    fout << std::endl;
                 }
             }
 
-            if (params.fname_out.length() > 0) {
-                fout << std::endl;
-            }
-
-            ++n_iter;
             if ((n_iter % n_new_line) == 0) {
                 printf("\n");
                 pcmf32_old = std::vector<float>(pcmf32.end() - n_samples_keep, pcmf32.end());
@@ -435,7 +418,6 @@ int main(int argc, char ** argv) {
                     }
                 }
             }
-            fflush(stdout);
         }
     });
 
