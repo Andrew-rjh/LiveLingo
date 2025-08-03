@@ -26,6 +26,7 @@
 
 
 #include "common-sdl.h"
+#include "system-audio.h"
 #include "common.h"
 #include "common-whisper.h"
 #include "whisper.h"
@@ -33,6 +34,8 @@
 
 #include <chrono>
 #include <cstdio>
+#include <iostream>
+#include <memory>
 #include <fstream>
 #include <string>
 #include <thread>
@@ -169,15 +172,24 @@ int main(int argc, char ** argv) {
     params.no_context    |= use_vad;
     params.max_tokens     = 0;
 
-    // init audio
+    // select and init audio source
+    std::cout << "Select input source (0: microphone, 1: system audio): ";
+    int audio_choice = 0;
+    std::cin >> audio_choice;
 
-    audio_async audio(params.length_ms);
-    if (!audio.init(params.capture_id, WHISPER_SAMPLE_RATE)) {
+    std::unique_ptr<audio_capture> audio;
+    if (audio_choice == 1) {
+        audio = std::make_unique<system_audio_async>(params.length_ms);
+    } else {
+        audio = std::make_unique<audio_async>(params.length_ms);
+    }
+
+    if (!audio->init(params.capture_id, WHISPER_SAMPLE_RATE)) {
         fprintf(stderr, "%s: audio.init() failed!\n", __func__);
         return 1;
     }
 
-    audio.resume();
+    audio->resume();
 
     // whisper init
     if (params.language != "auto" && whisper_lang_id(params.language.c_str()) == -1){
@@ -284,16 +296,16 @@ int main(int argc, char ** argv) {
                 if (!is_running) {
                     break;
                 }
-                audio.get(params.step_ms, pcmf32_new);
+                audio->get(params.step_ms, pcmf32_new);
 
                 if ((int) pcmf32_new.size() > 2*n_samples_step) {
                     fprintf(stderr, "\n\n%s: WARNING: cannot process audio fast enough, dropping audio ...\n\n", __func__);
-                    audio.clear();
+                    audio->clear();
                     continue;
                 }
 
                 if ((int) pcmf32_new.size() >= n_samples_step) {
-                    audio.clear();
+                    audio->clear();
                     break;
                 }
 
@@ -324,10 +336,10 @@ int main(int argc, char ** argv) {
                 continue;
             }
 
-            audio.get(2000, pcmf32_new);
+            audio->get(2000, pcmf32_new);
 
             if (::vad_simple(pcmf32_new, WHISPER_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, false)) {
-                audio.get(params.length_ms, pcmf32);
+                audio->get(params.length_ms, pcmf32);
             } else {
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
@@ -452,7 +464,7 @@ int main(int argc, char ** argv) {
         }
     }
 
-    audio.pause();
+    audio->pause();
 
     whisper_print_timings(ctx);
     whisper_free(ctx);
