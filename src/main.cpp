@@ -35,6 +35,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <fstream>
@@ -293,15 +294,18 @@ int main(int argc, char ** argv) {
     int n_iter = 0;
 
     std::atomic<bool> is_running(true);
+    std::ofstream log_file("transcription.log", std::ios::app);
 
     std::ofstream fout;
     if (params.fname_out.length() > 0) {
-        fout.open(params.fname_out);
+        fout.open(params.fname_out, std::ios::app);
         if (!fout.is_open()) {
             fprintf(stderr, "%s: failed to open output file '%s'!\n", __func__, params.fname_out.c_str());
             return 1;
         }
     }
+
+    set_log_files(&log_file, fout.is_open() ? &fout : nullptr);
 
     wav_writer wavWriter;
     if (params.save_audio) {
@@ -318,6 +322,7 @@ int main(int argc, char ** argv) {
         std::vector<float> pcmf32    (n_samples_30s, 0.0f);
         std::vector<float> pcmf32_old;
         std::vector<float> pcmf32_new_local;
+        std::string pending_text;
         int n_iter = 0;
         while (is_running.load()) {
             /*if (!audio_queue.pop(pcmf32_new_local)) {
@@ -332,10 +337,11 @@ int main(int argc, char ** argv) {
             }
             // 비어있는 버퍼가 들어오면 현재까지의 텍스트를 종료하고 컨텍스트를 초기화
             if (pcmf32_new_local.empty()) {
-                printf("\n");
-                if (params.fname_out.length() > 0) {
-                    fout << std::endl;
+                if (!pending_text.empty()) {
+                    timestamped_print("%s\n", pending_text.c_str());
+                    pending_text.clear();
                 }
+                printf("\n");
                 pcmf32_old.clear();
                 if (!params.no_context) {
                     prompt_tokens.clear();
@@ -393,32 +399,17 @@ int main(int argc, char ** argv) {
                 printf("\33[2K\r");
             }
             const int n_segments = whisper_full_n_segments(ctx);
+            std::string assembled;
             for (int i = 0; i < n_segments; ++i) {
                 const char * text = whisper_full_get_segment_text(ctx, i);
-
-                if (params.no_timestamps) {
-                    timestamped_print("%s", text);
-
-                    if (params.fname_out.length() > 0) {
-                        fout << text;
-                    }
-                } else {
+                if (!params.no_timestamps) {
                     const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
                     const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
-
-                    std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
-
-                    timestamped_print("%s", output.c_str());
-
-                    if (params.fname_out.length() > 0) {
-                        fout << output;
-                    }
+                    assembled += "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  ";
                 }
+                assembled += text;
             }
-
-            if (params.fname_out.length() > 0) {
-                fout << std::endl;
-            }
+            pending_text = assembled;
 
             ++n_iter;
             if ((n_iter % n_new_line) == 0) {

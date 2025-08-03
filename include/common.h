@@ -12,6 +12,7 @@
 #include <sstream>
 
 void timestamped_print(const char *fmt, ...);
+void set_log_files(std::ofstream * log_file, std::ofstream * user_file);
 
 //
 // GPT CLI argument parsing

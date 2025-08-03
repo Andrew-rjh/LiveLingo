@@ -13,6 +13,14 @@
 #include <cstdarg>
 #include <cstdio>
 
+static std::ofstream * g_log_file  = nullptr;
+static std::ofstream * g_user_file = nullptr;
+
+void set_log_files(std::ofstream * log_file, std::ofstream * user_file) {
+    g_log_file  = log_file;
+    g_user_file = user_file;
+}
+
 void timestamped_print(const char *fmt, ...) {
     using namespace std::chrono;
     auto now = system_clock::now();
@@ -25,12 +33,26 @@ void timestamped_print(const char *fmt, ...) {
 #endif
     char buf[20];
     std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tm_info);
-    std::fprintf(stdout, "[%s] ", buf);
+    char msg[1024];
     va_list args;
     va_start(args, fmt);
-    std::vfprintf(stdout, fmt, args);
+    vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
+
+    std::fprintf(stdout, "[%s] %s", buf, msg);
     std::fflush(stdout);
+
+    auto log_to_file = [&](std::ofstream * f) {
+        if (f && f->is_open()) {
+            (*f) << "[" << buf << "] " << msg;
+            if (std::strlen(msg) == 0 || msg[std::strlen(msg) - 1] != '\n') {
+                (*f) << '\n';
+            }
+            f->flush();
+        }
+    };
+    log_to_file(g_log_file);
+    log_to_file(g_user_file);
 }
 
 // Function to check if the next argument exists
