@@ -18,13 +18,13 @@
 #include <windows.h>
 #endif
 
-
-
+#ifdef LL_USE_CUDA
 #pragma comment(lib, "ggml-cuda.lib")
 #pragma comment(lib, "CompilerIdCUDA.lib")
 #pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ¡¦
 #pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ¡¦
 #pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ¡¦
+#endif
 
 
 #include "common-sdl.h"
@@ -105,7 +105,11 @@ struct whisper_params {
     bool no_timestamps = false;
     bool tinydiarize   = false;
     bool save_audio    = false; // save audio to wav file
+#ifdef LL_USE_CUDA
     bool use_gpu       = true;
+#else
+    bool use_gpu       = false;
+#endif
     bool flash_attn    = true;
 
     std::string language  = "ko";
