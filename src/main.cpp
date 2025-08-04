@@ -88,7 +88,7 @@ private:
 // command-line parameters
 struct whisper_params {
     int32_t n_threads = std::thread::hardware_concurrency();//std::min(4, (int32_t) std::thread::hardware_concurrency());
-    int32_t step_ms = 500;//500;
+    int32_t step_ms = 5000;//500;
     int32_t length_ms  = 6000;
     int32_t keep_ms    = 1000;
     int32_t capture_id = -1;
@@ -280,7 +280,7 @@ int main(int argc, char ** argv) {
     // print some info about the processing
     {
         fprintf(stderr, "\n");
-        if (!whisper_is_multilingual(ctx)) {
+        if (ctx && !whisper_is_multilingual(ctx)) {
             if (params.language != "en" || params.translate) {
                 params.language = "en";
                 params.translate = false;
