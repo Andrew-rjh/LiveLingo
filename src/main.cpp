@@ -7,11 +7,6 @@
 
 #pragma comment(lib, "SDL2.lib")
 #pragma comment(lib, "SDL2main.lib")
-#pragma comment(lib, "whisper.lib")   // build\lib\Release\whisper.lib
-
-#pragma comment(lib, "ggml.lib")      // build\lib\Release\ggml.lib
-#pragma comment(lib, "ggml-cpu.lib")
-#pragma comment(lib, "ggml-base.lib")
 
 #ifdef _WIN32
 #define NOMINMAX        // <-- 반드시 windows.h보다 먼저 선언
@@ -24,6 +19,11 @@
 #pragma comment(lib, "cudart.lib")      // cudaDeviceSynchronize, cudaGetLastError ¡¦
 #pragma comment(lib, "cuda.lib")        // cuDeviceGet, cuGetErrorString ¡¦
 #pragma comment(lib, "cublas.lib")      // cublasCreate_v2, cublasDestroy_v2 ¡¦
+#else
+#pragma comment(lib, "cpulib/whisper.lib")   // build\lib\Release\whisper.lib
+#pragma comment(lib, "cpulib/ggml.lib")      // build\lib\Release\ggml.lib
+#pragma comment(lib, "cpulib/ggml-cpu.lib")
+#pragma comment(lib, "cpulib/ggml-base.lib")
 #endif
 
 
@@ -114,11 +114,11 @@ struct whisper_params {
 
     std::string language  = "ko";
 
-    //std::string model = "models/ggml-tiny.bin";
+    std::string model = "models/ggml-tiny.bin";
     //std::string model = "models/ggml-small.bin";
     //std::string model = "models/ggml-base.bin";
     //std::string model = "models/ggml-medium.bin";
-    std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
+    //std::string model = "models/ggml-large-v3-turbo-q5_0.bin";
     //std::string model = "models/ggml-large-v3-turbo.bin";
     //std::string model = "models/ggml-large-v3-turbo-q8_0.bin";
     std::string fname_out;
