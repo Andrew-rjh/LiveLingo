@@ -335,23 +335,46 @@ int main(int argc, char ** argv) {
 
     RingBuffer<std::vector<float>> audio_queue(8);
     std::thread inference_thread([&]() {
+        if (params.use_openai) {
+            OpenAIRealtimeClient client(params.language);
+            if (!client.connect()) {
+                is_running.store(false);
+                return;
+            }
+            std::vector<float> chunk;
+            std::string text;
+            while (is_running.load()) {
+                if (audio_queue.pop(chunk)) {
+                    if (params.save_audio) {
+                        wavWriter.write(chunk.data(), chunk.size());
+                    }
+                    client.send_audio(chunk);
+                } else {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
+                while (client.receive_transcript(text)) {
+                    timestamped_print("%s", text.c_str());
+                    if (log_file.is_open()) {
+                        time_t nowt = time(nullptr);
+                        char buf[32];
+                        strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", localtime(&nowt));
+                        log_file << "[" << buf << "] " << text << std::endl;
+                    }
+                }
+            }
+            return;
+        }
+
         std::vector<float> pcmf32(n_samples_30s, 0.0f);
         std::vector<float> pcmf32_old;
         std::vector<float> pcmf32_new_local;
         std::string sentence;
         int n_iter = 0;
         while (is_running.load()) {
-            /*if (!audio_queue.pop(pcmf32_new_local)) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                continue;
-            }*/
-                        // 최소 한 청크는 받아오기
             if (!audio_queue.pop(pcmf32_new_local)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 continue;
-
             }
-            // 비어있는 버퍼가 들어오면 현재까지의 텍스트를 종료하고 컨텍스트를 초기화
             if (pcmf32_new_local.empty()) {
                 printf("\n");
                 pcmf32_old.clear();
@@ -361,14 +384,11 @@ int main(int argc, char ** argv) {
                 n_iter = 0;
                 continue;
             }
-            // 큐에 남은 모든 청크를 한데 모아서 pcmf32_new_local에 합치기
             std::vector<float> backlog;
             while (audio_queue.pop(backlog)) {
                 pcmf32_new_local.insert(
                     pcmf32_new_local.end(),
-                    backlog.begin(), backlog.end()
-                     );
-                
+                    backlog.begin(), backlog.end());
             }
             if (params.save_audio) {
                 wavWriter.write(pcmf32_new_local.data(), pcmf32_new_local.size());
@@ -382,58 +402,49 @@ int main(int argc, char ** argv) {
             memcpy(pcmf32.data() + n_samples_take, pcmf32_new_local.data(), n_samples_new*sizeof(float));
             pcmf32_old = pcmf32;
 
-            if (params.use_openai) {
-                std::string text = openai_transcribe(pcmf32, params.language);
-                if (!text.empty()) {
-                    timestamped_print("%s", text.c_str());
-                    sentence = text;
+            whisper_full_params wparams = whisper_full_default_params(params.beam_size > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
+            wparams.print_progress   = false;
+            wparams.print_special    = params.print_special;
+            wparams.print_realtime   = false;
+            wparams.print_timestamps = !params.no_timestamps;
+            wparams.translate        = params.translate;
+            wparams.single_segment   = !use_vad;
+            wparams.max_tokens       = params.max_tokens;
+            wparams.language         = params.language.c_str();
+            wparams.n_threads        = params.n_threads;
+            wparams.beam_search.beam_size = params.beam_size;
+            wparams.audio_ctx        = params.audio_ctx;
+            wparams.tdrz_enable      = params.tinydiarize;
+            wparams.temperature_inc  = params.no_fallback ? 0.0f : wparams.temperature_inc;
+            wparams.prompt_tokens    = params.no_context ? nullptr : prompt_tokens.data();
+            wparams.prompt_n_tokens  = params.no_context ? 0       : prompt_tokens.size();
+
+            if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
+                fprintf(stderr, "%s: failed to process audio\n", argv[0]);
+                is_running.store(false);
+                break;
+            }
+
+            if (!use_vad) {
+                printf("\33[2K\r");
+                printf("%s", std::string(100, ' ').c_str());
+                printf("\33[2K\r");
+            }
+            const int n_segments = whisper_full_n_segments(ctx);
+            for (int i = 0; i < n_segments; ++i) {
+                const char * text = whisper_full_get_segment_text(ctx, i);
+
+                if (params.no_timestamps) {
+                    timestamped_print("%s", text);
+                } else {
+                    const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
+                    const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
+
+                    std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
+
+                    timestamped_print("%s", output.c_str());
                 }
-            } else {
-                whisper_full_params wparams = whisper_full_default_params(params.beam_size > 1 ? WHISPER_SAMPLING_BEAM_SEARCH : WHISPER_SAMPLING_GREEDY);
-                wparams.print_progress   = false;
-                wparams.print_special    = params.print_special;
-                wparams.print_realtime   = false;
-                wparams.print_timestamps = !params.no_timestamps;
-                wparams.translate        = params.translate;
-                wparams.single_segment   = !use_vad;
-                wparams.max_tokens       = params.max_tokens;
-                wparams.language         = params.language.c_str();
-                wparams.n_threads        = params.n_threads;
-                wparams.beam_search.beam_size = params.beam_size;
-                wparams.audio_ctx        = params.audio_ctx;
-                wparams.tdrz_enable      = params.tinydiarize;
-                wparams.temperature_inc  = params.no_fallback ? 0.0f : wparams.temperature_inc;
-                wparams.prompt_tokens    = params.no_context ? nullptr : prompt_tokens.data();
-                wparams.prompt_n_tokens  = params.no_context ? 0       : prompt_tokens.size();
-
-                if (whisper_full(ctx, wparams, pcmf32.data(), pcmf32.size()) != 0) {
-                    fprintf(stderr, "%s: failed to process audio\n", argv[0]);
-                    is_running.store(false);
-                    break;
-                }
-
-                if (!use_vad) {
-                    printf("\33[2K\r");
-                    printf("%s", std::string(100, ' ').c_str());
-                    printf("\33[2K\r");
-                }
-                const int n_segments = whisper_full_n_segments(ctx);
-                for (int i = 0; i < n_segments; ++i) {
-                    const char * text = whisper_full_get_segment_text(ctx, i);
-
-                    if (params.no_timestamps) {
-                        timestamped_print("%s", text);
-                    } else {
-                        const int64_t t0 = whisper_full_get_segment_t0(ctx, i);
-                        const int64_t t1 = whisper_full_get_segment_t1(ctx, i);
-
-                        std::string output = "[" + to_timestamp(t0, false) + " --> " + to_timestamp(t1, false) + "]  " + text;
-
-                        timestamped_print("%s", output.c_str());
-                    }
-                    sentence = text;
-                    //sentence += " ";
-                }
+                sentence = text;
             }
 
             ++n_iter;
