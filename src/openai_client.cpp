@@ -157,6 +157,7 @@ OpenAIRealtimeClient::~OpenAIRealtimeClient() {
     if (m_headers) {
         curl_slist_free_all(m_headers);
     }
+    curl_global_cleanup();
 }
 
 bool OpenAIRealtimeClient::connect() {
@@ -164,6 +165,17 @@ bool OpenAIRealtimeClient::connect() {
     if (api_key.empty()) {
         fprintf(stderr, "OPENAI_API_KEY is not set\n");
         return false;
+    }
+
+    // initialize global libcurl state once per process
+    static bool curl_inited = false;
+    if (!curl_inited) {
+        CURLcode cres = curl_global_init(CURL_GLOBAL_DEFAULT);
+        if (cres != CURLE_OK) {
+            fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(cres));
+            return false;
+        }
+        curl_inited = true;
     }
 
     m_curl = curl_easy_init();
@@ -180,6 +192,8 @@ bool OpenAIRealtimeClient::connect() {
     m_headers = curl_slist_append(m_headers, auth.c_str());
     // specify OpenAI realtime subprotocol so the server accepts the websocket handshake
     m_headers = curl_slist_append(m_headers, "Sec-WebSocket-Protocol: oai.realtime.v1");
+    // required to opt into the realtime API while in beta
+    m_headers = curl_slist_append(m_headers, "OpenAI-Beta: realtime=v1");
     curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, m_headers);
 
     CURLcode res = curl_easy_perform(m_curl);
