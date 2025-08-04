@@ -370,6 +370,9 @@ int main(int argc, char ** argv) {
         std::vector<float> pcmf32_new_local;
         std::string sentence;
         int n_iter = 0;
+        auto last_voice_time = std::chrono::steady_clock::now();
+        bool in_phrase = false;
+        constexpr int64_t k_silence_ms = 2000; // consider phrase ended after 2s of silence
         while (is_running.load()) {
             if (!audio_queue.pop(pcmf32_new_local)) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -392,6 +395,11 @@ int main(int argc, char ** argv) {
             }
             if (params.save_audio) {
                 wavWriter.write(pcmf32_new_local.data(), pcmf32_new_local.size());
+            }
+            bool has_voice = !vad_simple(pcmf32_new_local, WHISPER_SAMPLE_RATE, 1000, params.vad_thold, params.freq_thold, false);
+            if (has_voice) {
+                last_voice_time = std::chrono::steady_clock::now();
+                in_phrase = true;
             }
             const int n_samples_new = pcmf32_new_local.size();
             const int n_samples_take = std::min((int) pcmf32_old.size(), std::max(0, n_samples_keep + n_samples_len - n_samples_new));
@@ -468,6 +476,15 @@ int main(int argc, char ** argv) {
                         }
                     }
                 }
+            }
+            auto now = std::chrono::steady_clock::now();
+            if (in_phrase && std::chrono::duration_cast<std::chrono::milliseconds>(now - last_voice_time).count() > k_silence_ms) {
+                printf("\n");
+                pcmf32_old.clear();
+                prompt_tokens.clear();
+                std::vector<float> drop;
+                while (audio_queue.pop(drop)) {}
+                in_phrase = false;
             }
             fflush(stdout);
         }
