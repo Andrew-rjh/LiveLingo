@@ -343,6 +343,7 @@ int main(int argc, char ** argv) {
             }
             std::vector<float> chunk;
             std::string text;
+            auto last_ping = std::chrono::steady_clock::now();
             while (is_running.load()) {
                 if (audio_queue.pop(chunk)) {
                     if (params.save_audio) {
@@ -352,6 +353,14 @@ int main(int argc, char ** argv) {
                 } else {
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                 }
+
+                // keep websocket alive with periodic ping
+                auto now = std::chrono::steady_clock::now();
+                if (now - last_ping > std::chrono::seconds(5)) {
+                    client.ping();
+                    last_ping = now;
+                }
+
                 while (client.receive_transcript(text)) {
                     timestamped_print("%s", text.c_str());
                     if (log_file.is_open()) {

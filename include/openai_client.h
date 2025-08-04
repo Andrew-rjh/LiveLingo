@@ -23,6 +23,9 @@ public:
     // receive a transcript message, returns false if no message available
     bool receive_transcript(std::string &text);
 
+    // send a ping frame to keep the websocket connection alive
+    bool ping();
+
 private:
     std::string m_language;
     CURL *m_curl = nullptr;
