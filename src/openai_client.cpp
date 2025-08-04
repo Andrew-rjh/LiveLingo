@@ -178,7 +178,8 @@ bool OpenAIRealtimeClient::connect() {
 
     std::string auth = "Authorization: Bearer " + api_key;
     m_headers = curl_slist_append(m_headers, auth.c_str());
-    m_headers = curl_slist_append(m_headers, "Sec-WebSocket-Protocol: openai-realtime");
+    // specify OpenAI realtime subprotocol so the server accepts the websocket handshake
+    m_headers = curl_slist_append(m_headers, "Sec-WebSocket-Protocol: oai.realtime.v1");
     curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, m_headers);
 
     CURLcode res = curl_easy_perform(m_curl);
