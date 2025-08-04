@@ -157,6 +157,7 @@ OpenAIRealtimeClient::~OpenAIRealtimeClient() {
     if (m_headers) {
         curl_slist_free_all(m_headers);
     }
+    curl_global_cleanup();
 }
 
 bool OpenAIRealtimeClient::connect() {
@@ -164,6 +165,17 @@ bool OpenAIRealtimeClient::connect() {
     if (api_key.empty()) {
         fprintf(stderr, "OPENAI_API_KEY is not set\n");
         return false;
+    }
+
+    // initialize global libcurl state once per process
+    static bool curl_inited = false;
+    if (!curl_inited) {
+        CURLcode cres = curl_global_init(CURL_GLOBAL_DEFAULT);
+        if (cres != CURLE_OK) {
+            fprintf(stderr, "curl_global_init() failed: %s\n", curl_easy_strerror(cres));
+            return false;
+        }
+        curl_inited = true;
     }
 
     m_curl = curl_easy_init();
@@ -174,9 +186,14 @@ bool OpenAIRealtimeClient::connect() {
     std::string url = "wss://api.openai.com/v1/realtime?intent=transcription&model=gpt-4o-mini-transcribe&version=2025-04-01-preview";
     curl_easy_setopt(m_curl, CURLOPT_URL, url.c_str());
     curl_easy_setopt(m_curl, CURLOPT_CONNECT_ONLY, 2L); // 2 = websockets
+    curl_easy_setopt(m_curl, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_1_1);
 
     std::string auth = "Authorization: Bearer " + api_key;
     m_headers = curl_slist_append(m_headers, auth.c_str());
+    // specify OpenAI realtime subprotocol so the server accepts the websocket handshake
+    m_headers = curl_slist_append(m_headers, "Sec-WebSocket-Protocol: oai.realtime.v1");
+    // required to opt into the realtime API while in beta
+    m_headers = curl_slist_append(m_headers, "OpenAI-Beta: realtime=v1");
     curl_easy_setopt(m_curl, CURLOPT_HTTPHEADER, m_headers);
 
     CURLcode res = curl_easy_perform(m_curl);
@@ -228,5 +245,12 @@ bool OpenAIRealtimeClient::receive_transcript(std::string &text) {
     if (end == std::string::npos) return false;
     text = resp.substr(pos + 1, end - pos - 1);
     return true;
+}
+
+bool OpenAIRealtimeClient::ping() {
+    if (!m_curl) return false;
+    size_t sent = 0;
+    CURLcode res = curl_ws_send(m_curl, "", 0, &sent, 0, CURLWS_PING);
+    return res == CURLE_OK;
 }
 
