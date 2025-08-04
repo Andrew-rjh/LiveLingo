@@ -146,6 +146,7 @@
     <ClInclude Include="include\ggml.h" />
     <ClInclude Include="include\whisper.h" />
     <ClInclude Include="include\vad.h" />
+    <ClInclude Include="include\openai_client.h" />
     <ClInclude Include="src\miniaudio.h" />
     <None Include="src\stb_vorbis.c" />
   </ItemGroup>
@@ -155,6 +156,7 @@
     <ClCompile Include="src\common.cpp" />
     <ClCompile Include="src\system-audio.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\openai_client.cpp" />
     <ClCompile Include="src\vad.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
