@@ -1,15 +1,26 @@
+#define NOMINMAX
 #define _CRT_SECURE_NO_WARNINGS
+
+#include <algorithm>
+#ifdef min
+#undef min
+#endif
+#ifdef max
+#undef max
+#endif
+
+#include <cstdint>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+#include <curl/curl.h>
+#include <chrono>
+#include <thread>
+
 #include "openai_client.h"
 #include "common.h"
 #include "whisper.h"
 
-#include <curl/curl.h>
-#include <cstdlib>
-#include <fstream>
-#include <sstream>
-#include <algorithm>
-#include <chrono>
-#include <thread>
 
 // simple helper to read environment variable or fallback to .env file
 static std::string get_env(const std::string &key) {
