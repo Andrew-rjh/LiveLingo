@@ -75,8 +75,8 @@
     <LibraryPath>C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <ExternalIncludePath>C:\SDL2\include;C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
-    <LibraryPath>C:\SDL2\lib\x64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
+    <ExternalIncludePath>C:\PersonalProj\LiveLingo\curl_x64-windows\include;C:\PersonalProj\LiveLingo\curl\include;C:\SDL2\include;C:\PersonalProj\whisper.cpp\include;C:\PersonalProj\whisper.cpp\ggml\include;C:\PersonalProj\LiveLingo\include;$(ExternalIncludePath)</ExternalIncludePath>
+    <LibraryPath>C:\PersonalProj\LiveLingo\curl_x64-windows\lib;C:\PersonalProj\LiveLingo\curl\lib;C:\SDL2\lib\x64;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v12.9\lib\x64;C:\PersonalProj\whisper.cpp\build\src\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -148,6 +148,7 @@
     <ClInclude Include="include\vad.h" />
     <ClInclude Include="include\openai_client.h" />
     <ClInclude Include="src\miniaudio.h" />
+    <None Include=".env" />
     <None Include="src\stb_vorbis.c" />
   </ItemGroup>
   <ItemGroup>

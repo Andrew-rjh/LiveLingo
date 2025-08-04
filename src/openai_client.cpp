@@ -1,3 +1,4 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include "openai_client.h"
 #include "common.h"
 #include "whisper.h"
